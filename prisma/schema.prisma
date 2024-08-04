@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model SuperAdmin {
+  id            Int                 @id @default(autoincrement())
+  name          String
+  username      String              @unique
+  email         String              @unique
+  phoneNumber   String
+  password      String
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  deletedAt     DateTime?
+  secretKeys    SecretKeySuperadmin[]
+}
+
+model SecretKeySuperadmin {
+  id            Int                 @id @default(autoincrement())
+  admin         SuperAdmin?         @relation(fields: [superAdminId], references: [id])
+  superAdminId  Int?
+  token         String
+}
+
+model Admin {
+  id            Int                 @id @default(autoincrement())
+  name          String
+  username      String              @unique
+  email         String              @unique
+  phoneNumber   String
+  password      String
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  deletedAt     DateTime?
+  secretKeys    SecretKeyAdmin[]
+  user          User[]
+}
+
+model SecretKeyAdmin {
+  id            Int                 @id @default(autoincrement())
+  admin         Admin?              @relation(fields: [adminId], references: [id])
+  adminId       Int?
+  token         String
+}
+
+model Plan {
+  id            Int       @id @default(autoincrement())
+  name          String
+  description   String?
+  price         Float
+  duration      Int       // مدة الخطة باليوم
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  users         UserPlan[]
+  rules         PlanRule[]
+}
+
+model Rule {
+  id            Int       @id @default(autoincrement())
+  name          String
+  description   String?
+  plans         PlanRule[]
+}
+
+model PlanRule {
+  id            Int       @id @default(autoincrement())
+  planId        Int
+  ruleId        Int
+  plan          Plan      @relation(fields: [planId], references: [id])
+  rule          Rule      @relation(fields: [ruleId], references: [id])
+}
+
+model UserPlan {
+  id            Int       @id @default(autoincrement())
+  userId        Int
+  planId        Int
+  startDate     DateTime
+  endDate       DateTime
+  user          User      @relation(fields: [userId], references: [id])
+  plan          Plan      @relation(fields: [planId], references: [id])
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String
+  email         String    @unique
+  jopTitel  String
+  password      String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  userPlans     UserPlan[]
+  admin         Admin[]
+  Attendance  Attendance[]
+  SecretKeyuser   SecretKeyuser[]
+  vacations     Vacation[]
+  annualLeaveDays Int         @default(14) // عدد أيام الإجازة السنوية
+  emergencyLeaveDays Int      @default(7)
+  salaries          Salary[]
+  meetings          Meeting[] @relation("UserMeetings")
+
+  // عدد أيام الإجازة الطارئة
+}
+model SecretKeyuser {
+  id            Int                 @id @default(autoincrement())
+  userId       Int?
+  user          User?      @relation(fields: [userId], references: [id])
+
+  token         String
+}
+
+model Attendance {
+  id          Int            @id @default(autoincrement())
+  userId      Int
+  user        User           @relation(fields: [userId], references: [id])
+  Attendancecheckin    AttendancecheckIn[]
+  Attendancecheckout    Attendancecheckout[]
+
+}
+model AttendancecheckIn {
+  id          Int            @id @default(autoincrement())
+  AttendanceId      Int  
+  Attendance        Attendance           @relation(fields: [AttendanceId], references: [id])
+  checkIn     DateTime
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+model Attendancecheckout{
+  id          Int            @id @default(autoincrement())
+  AttendanceId      Int  
+  Attendance        Attendance           @relation(fields: [AttendanceId], references: [id])
+  checkOut    DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+}
+model Vacation {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  reason      String
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  type          String    // سنوية أو طارئة
+
+}
+
+model Salary {
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  user             User      @relation(fields: [userId], references: [id])
+  period           DateTime
+  basicSalary      Float
+  increase         Float
+  projectPercentage Float
+  emergencyDeductions Float
+  netSalary        Float
+  exchangeDate     DateTime
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+
+
+model Meeting {
+  id               Int       @id @default(autoincrement())
+  title            String
+  date             DateTime
+  time             DateTime
+  place            String
+  audience         String
+  notes            String?
+  status           String    @default("Pending")
+  userId           Int
+  user             User      @relation("UserMeetings", fields: [userId], references: [id])
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
