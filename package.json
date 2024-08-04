@@ -2,8 +2,10 @@
   "name": "attendance-app",
   "version": "1.0.0",
   "description": "",
-  "main": "app.js",
-  "scripts": {
+  "main": "./app.js",
+  "engines": {
+    "node": "18.x"
+  },  "scripts": {
     "dev": "nodemon app.ts",
     "start": "nodemon app.ts",
     "prestart": "npm run build",
@@ -11,7 +13,7 @@
     "postinstall": "prisma generate",
     "migrate": "prisma migrate",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc --project path/to/tsconfig.json"
+    "build": "tsc --project tsconfig.json"
   },
   "keywords": [],
   "author": "",
