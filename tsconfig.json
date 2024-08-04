@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+      "target": "ES6",                        // Specifies the ECMAScript target version
+      "module": "commonjs",                   // Specifies the module system
+      "strict": true,                         // Enable all strict type-checking options
+      "esModuleInterop": true,                // Enable esModuleInterop
+      "skipLibCheck": true,                   // Skip type checking of all declaration files
+      "forceConsistentCasingInFileNames": true // Disallow inconsistently-cased references to the same file
+    },
+    "include": [
+      "src" // Include all TypeScript files in the src directory
+    ],
+    "exclude": [
+      "node_modules",                         // Exclude node_modules directory
+      "**/*.spec.ts"                          // Exclude test files
+    ]
+  }
+  
