@@ -80,6 +80,13 @@ CREATE TABLE `PlanRule` (
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE TABLE Zones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    center_latitude DECIMAL(9, 6) NOT NULL,
+    center_longitude DECIMAL(9, 6) NOT NULL,
+    radius DECIMAL(10, 2) NOT NULL -- نصف القطر بالأمتار
+);
 
 -- CreateTable
 CREATE TABLE `UserPlan` (
@@ -128,7 +135,7 @@ CREATE TABLE `Attendance` (
 -- CreateTable
 CREATE TABLE `AttendancecheckIn` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `AttendanceId` INTEGER NOT NULL,
+    `attendanceId` INTEGER NOT NULL,
     `checkIn` DATETIME(3) NOT NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
@@ -139,7 +146,7 @@ CREATE TABLE `AttendancecheckIn` (
 -- CreateTable
 CREATE TABLE `Attendancecheckout` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `AttendanceId` INTEGER NOT NULL,
+    `attendanceId` INTEGER NOT NULL,
     `checkOut` DATETIME(3) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
@@ -197,12 +204,12 @@ CREATE TABLE `Meeting` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `_AdminToUser` (
+CREATE TABLE `_AdminUsers` (
     `A` INTEGER NOT NULL,
     `B` INTEGER NOT NULL,
 
-    UNIQUE INDEX `_AdminToUser_AB_unique`(`A`, `B`),
-    INDEX `_AdminToUser_B_index`(`B`)
+    UNIQUE INDEX `_AdminUsers_AB_unique`(`A`, `B`),
+    INDEX `_AdminUsers_B_index`(`B`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
@@ -230,10 +237,10 @@ ALTER TABLE `SecretKeyuser` ADD CONSTRAINT `SecretKeyuser_userId_fkey` FOREIGN K
 ALTER TABLE `Attendance` ADD CONSTRAINT `Attendance_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `AttendancecheckIn` ADD CONSTRAINT `AttendancecheckIn_AttendanceId_fkey` FOREIGN KEY (`AttendanceId`) REFERENCES `Attendance`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `AttendancecheckIn` ADD CONSTRAINT `AttendancecheckIn_attendanceId_fkey` FOREIGN KEY (`attendanceId`) REFERENCES `Attendance`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `Attendancecheckout` ADD CONSTRAINT `Attendancecheckout_AttendanceId_fkey` FOREIGN KEY (`AttendanceId`) REFERENCES `Attendance`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `Attendancecheckout` ADD CONSTRAINT `Attendancecheckout_attendanceId_fkey` FOREIGN KEY (`attendanceId`) REFERENCES `Attendance`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `Vacation` ADD CONSTRAINT `Vacation_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -245,7 +252,7 @@ ALTER TABLE `Salary` ADD CONSTRAINT `Salary_userId_fkey` FOREIGN KEY (`userId`) 
 ALTER TABLE `Meeting` ADD CONSTRAINT `Meeting_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `_AdminToUser` ADD CONSTRAINT `_AdminToUser_A_fkey` FOREIGN KEY (`A`) REFERENCES `Admin`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `_AdminUsers` ADD CONSTRAINT `_AdminUsers_A_fkey` FOREIGN KEY (`A`) REFERENCES `Admin`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `_AdminToUser` ADD CONSTRAINT `_AdminToUser_B_fkey` FOREIGN KEY (`B`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `_AdminUsers` ADD CONSTRAINT `_AdminUsers_B_fkey` FOREIGN KEY (`B`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

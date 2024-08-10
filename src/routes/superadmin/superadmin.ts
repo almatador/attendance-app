@@ -1,117 +1,119 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import mysql from 'mysql2/promise'; // استخدام promise-based mysql2
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import connection from '../database'; // تأكد من أن هذا المسار صحيح
+import jwt from 'jsonwebtoken'; // Import JWT library
 
 const superAdminRouter = express.Router();
-const prisma = new PrismaClient();
+ // Replace with your own secret key
 
-
-
-const generateSecretKey = () => {
-    return crypto.randomBytes(64).toString('hex');
+// توليد مفتاح سري
+const generateSecretKey = () => crypto.randomBytes(64).toString('hex');
+interface Admin {
+    id: number;
+    username: string;
+    password: string;
+}
+const jwtSecret = generateSecretKey();
+const hashPassword = async (password: string): Promise<string> => {
+    const salt = await bcrypt.genSalt(10);
+    return bcrypt.hash(password, salt);
+};
+const verifyPassword = async (password: string, hashedPassword: string): Promise<boolean> => {
+    return bcrypt.compare(password, hashedPassword);
 };
 
-superAdminRouter.post('/createSuperAdmin', async (req, res) => {
-  const { name, username, email, phoneNumber, password } = req.body;
+superAdminRouter.post('/create', async (req, res) => {
+    const { name, username, email, phoneNumber, password } = req.body;
 
-  try {
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-  
-    const superAdmin = await prisma.superAdmin.create({
-      data: {
-        name:name,
-        username :username,
-        email : email,
-        phoneNumber:phoneNumber,
-        password :hashedPassword,
-        secretKeys: {
-            create: {
-                token: generateSecretKey(), // Generate and include secret key
-            }
-        }
-      },
-    });
-    res.status(201).json(superAdmin);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while creating the super admin.' });
-  }
-});
-superAdminRouter.post("/login", async (req, res) => {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).send("الرجاء تقديم البريد الإلكتروني وكلمة المرور");
+    if (!name || !username || !email || !phoneNumber || !password) {
+        return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
     }
-  
-    try {
-        const admin = await prisma.superAdmin.findUnique({
-            where: {
-                email: email,
-            },
-        });
 
-        if (admin && bcrypt.compareSync(password, admin.password)) {
-            const newToken = generateSecretKey();
-            
-            const secretKeyAdmin = await prisma.secretKeySuperadmin.findMany({
-                where: {
-                    superAdminId: admin.id,
-                },
+    try {
+        const hashedPassword = await hashPassword(password);
+        const query = `
+        INSERT INTO superadmin (name, username, email, phoneNumber, password)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+
+        connection.query(query, [name, username, email, phoneNumber, hashedPassword], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
+            }
+
+            const newId = (results as mysql.OkPacket).insertId;
+
+            res.status(201).json({
+                id: newId,
+                name,
+                username,
+                email,
+                phoneNumber,
             });
- 
-            if (secretKeyAdmin) {
-                await prisma.secretKeySuperadmin.update({
-                    where: {
-                        id: admin.id,
-                    },
-                    data: {
-                        token: newToken,
-                    },
-                });
-            } else {
-                await prisma.secretKeySuperadmin.create({
-                    data: {
-                        superAdminId: admin.id,
-                        token: newToken,
-                    },
-                });
-            }
-
-            res.status(200).json({ admin, token: newToken });
-        } else {
-            res.status(404).send("الايميل او كلمة المرور خطأ");
-        }
-    } catch (error) {
-        console.error("Login error:", error);
-        res.status(500).send("حدث مشكلة في السيرفر");
-    }
-});
-superAdminRouter.post('/logout/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        if (isNaN(parseInt(id))) {
-            return res.status(400).send('Invalid ID');
-        }
-
-        await prisma.secretKeySuperadmin.updateMany({
-            where: {
-                superAdminId: parseInt(id)
-            },
-            data: {
-                token: "null"
-            }
         });
-
-        res.clearCookie('token'); // Adjust the cookie name if different
-        res.status(200).send("تم تسجيل الخروج بنجاح");
     } catch (error) {
-        console.error("Logout error:", error);
-        res.status(500).send("حدث مشكلة في السيرفر");
+        console.error(error);
+        res.status(500).json({ error: 'حدث خطأ أثناء معالجة كلمة المرور.' });
     }
 });
+superAdminRouter.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+  
+    const query = `SELECT * FROM superadmin WHERE username = ?`;
+  
+    connection.query(query, [username], async (err, results: mysql.RowDataPacket[]) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'خطأ في التحقق من بيانات المدير.' });
+      }
+  
+      if (!results.length) {
+        return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
+      }
+  
+      const admin: Admin = results[0] as Admin;
+      
+      const match = await verifyPassword(password, admin.password);
+      if (!match) {
+        return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
+      }
+  
+      const token = jwt.sign({ adminId: admin.id }, jwtSecret, { expiresIn: '1h' });
+  
+      const insertTokenQuery = `INSERT INTO secretkeysuperadmin (superAdminId, token) VALUES (?, ?)`;
+      connection.query(insertTokenQuery, [admin.id, token], (err) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
+        }
+  
+        res.status(200).json({ token });
+      });
+    });
+  });
+  
+// تسجيل الخروج
+
+superAdminRouter.post('/logout', (req, res) => {
+    const { token } = req.body;
+  
+    if (!token) {
+      return res.status(400).json({ error: 'التوكن مطلوب.' });
+    }
+  
+    const deleteTokenQuery = `DELETE FROM secretkeysuperadmin WHERE token = ?`;
+  
+    connection.query(deleteTokenQuery, [token], (err) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'خطأ في إلغاء التوكن.' });
+      }
+  
+      res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
+    });
+  });
 
 export default superAdminRouter;

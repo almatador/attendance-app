@@ -38,7 +38,7 @@ model Admin {
   updatedAt     DateTime            @updatedAt
   deletedAt     DateTime?
   secretKeys    SecretKeyAdmin[]
-  user          User[]
+  users         User[] // إزالة userId
 }
 
 model SecretKeyAdmin {
@@ -84,32 +84,31 @@ model UserPlan {
   user          User      @relation(fields: [userId], references: [id])
   plan          Plan      @relation(fields: [planId], references: [id])
 }
-
 model User {
-  id            Int       @id @default(autoincrement())
-  name          String
-  email         String    @unique
-  jopTitel  String
-  password      String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  userPlans     UserPlan[]
-  admin         Admin[]
-  Attendance  Attendance[]
-  SecretKeyuser   SecretKeyuser[]
-  vacations     Vacation[]
-  annualLeaveDays Int         @default(14) // عدد أيام الإجازة السنوية
+  id                Int       @id @default(autoincrement())
+  name              String
+  email             String    @unique
+  jobTitle          String    // تأكد من أن الاسم صحيح
+  password          String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  userPlans         UserPlan[]
+  admin             Admin?    @relation(fields: [adminId], references: [id])
+  adminId           Int?
+  attendances       Attendance[]
+  secretKeys        SecretKeyuser[]
+  vacations         Vacation[]
+  annualLeaveDays   Int       @default(14)
   emergencyLeaveDays Int      @default(7)
   salaries          Salary[]
   meetings          Meeting[] @relation("UserMeetings")
-
-  // عدد أيام الإجازة الطارئة
 }
+
+
 model SecretKeyuser {
   id            Int                 @id @default(autoincrement())
   userId       Int?
   user          User?      @relation(fields: [userId], references: [id])
-
   token         String
 }
 
@@ -117,27 +116,28 @@ model Attendance {
   id          Int            @id @default(autoincrement())
   userId      Int
   user        User           @relation(fields: [userId], references: [id])
-  Attendancecheckin    AttendancecheckIn[]
-  Attendancecheckout    Attendancecheckout[]
-
+  checkIns    AttendancecheckIn[]
+  checkouts   Attendancecheckout[]
 }
+
 model AttendancecheckIn {
   id          Int            @id @default(autoincrement())
-  AttendanceId      Int  
-  Attendance        Attendance           @relation(fields: [AttendanceId], references: [id])
+  attendanceId Int  
+  attendance  Attendance    @relation(fields: [attendanceId], references: [id])
   checkIn     DateTime
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 }
-model Attendancecheckout{
+
+model Attendancecheckout {
   id          Int            @id @default(autoincrement())
-  AttendanceId      Int  
-  Attendance        Attendance           @relation(fields: [AttendanceId], references: [id])
+  attendanceId Int  
+  attendance  Attendance    @relation(fields: [attendanceId], references: [id])
   checkOut    DateTime?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
-
 }
+
 model Vacation {
   id          Int       @id @default(autoincrement())
   userId      Int
@@ -148,8 +148,7 @@ model Vacation {
   status      String    @default("pending")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  type          String    // سنوية أو طارئة
-
+  type        String    // سنوية أو طارئة
 }
 
 model Salary {
@@ -166,8 +165,6 @@ model Salary {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }
-
-
 
 model Meeting {
   id               Int       @id @default(autoincrement())

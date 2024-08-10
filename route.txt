@@ -1,0 +1,129 @@
+انشاء مستخدم ب id admin 
+/admin/user/create
+{
+  "name": "user_nadadsame",
+  "email": "user_emasdadail@example.com",
+  "password": "password12",
+  "adminId": 1,
+  "jobTitle": "job_title"
+}
+/admin/create
+انشاءادمن
+{
+  "name": "Admin Name",
+  "username": "admin_username",
+  "email": "admin@example.com",
+  "phoneNumber": "1234567890",
+  "password": "adminpassword"
+}
+/admin/user/update/2
+تعديل  يوزر ب الid
+/admin/user/delete/2
+مسح اليوزر ب id
+
+/admin/login
+تسجيل دخول الادمن
+{
+    "usernema":"admin_username",
+    "password": "newpassword"
+}
+
+/admin/logout
+تسجيل خروج الادمن
+/salaryadmin/create
+تحديد المرتب الخاص ب الموظف ب id الموظف
+{
+  "userId": 3,
+  "period": "2024-07-01",
+  "basicSalary": 3000.00,
+  "increase": 250.00,
+  "projectPercentage": 150.00,
+  "emergencyDeductions": 50.00,
+  "exchangeDate": "2024-07-15"
+}
+/salaryadmin/update/3
+تعديل المرتب ب الidالمرتب 
+{
+  "basicSalary": 3500,
+  "increase": 300,
+  "projectPercentage": 200,
+  "emergencyDeductions": 100,
+  "exchangeDate": "2024-08-01"
+}
+/salaryadmin/all
+استدعاء جميع المرتبات
+/meetingadmin/create
+انشاء ميتانج
+{
+  "title": "Monthly Strategy Meeting",
+  "date": "2024-08-10",
+  "time": "10:00:00",
+  "place": "Conference Room A",
+  "audience": "Marketing Team",
+  "notes": "Discuss new marketing strategies and Q3 goals.",
+  "userId": 3
+  
+}
+/meetingadmin/update/3
+تعديل ميتانج
+{
+  "title": "Monthly Strategy Meeting",
+  "date": "2024-08-10",
+  "time": "10:00:00",
+  "place": "Conference Room A",
+  "audience": "Marketing Team",
+  "notes": "Discuss new marketing strategies and Q3 goals.",
+  "userId": 3
+  
+}
+meetingadmin/all
+استدعاءالميتانج كلو
+
+/super/logout
+تسجيل خروج السوبر الادمن
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkdfvndkvndkvndkvnpXVCJ9.eyJhZG1pbklkIjoxMCwiaWF0IjoxNzIzMjQwNTczLCJleHAiOjE3MjMyNDQxNzN9.pNfkgaqRSddY-49vdXzvvmnvdxJ56kQ2C_IAeBC5tl4"
+}
+/super/create
+انشاء سوبر ادمن 
+{
+  "name": "Ahmed Ali",
+  "username": "ahmed_admin",
+  "email": "ahmed@example.com",
+  "phoneNumber": "1234567890",
+  "password": "yourpassword"
+}
+/super/login
+{
+  "username": "ahmed_admin",
+  "password": "yourpassword"
+}
+
+/zoun/zones
+{
+  "name": "Zone A",
+  "center_latitude": 30.0444,
+  "center_longitude": 31.2357,
+  "radius": 500,
+  "adminId": 1
+}
+ مع التوكن
+/vacationsadmin/update/:id
+عبارة عن حالتين 
+['approved', 'rejected']
+/vacationsadmin/all/adminId
+لاستدعائها كلها
+/plan/create
+لانشاء خطة
+مع توكن الخاص ب السوبر ادمن
+{
+  "name": "Premium Plan",
+  "description": "Access to all features and premium support.",
+  "price": 99.99,
+  "duration": "monthly"
+}
+/plan/id 
+للاستدعاء او التعديل او الححذف الخطط
+
+
+

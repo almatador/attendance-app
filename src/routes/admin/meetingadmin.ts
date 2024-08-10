@@ -1,74 +1,88 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import mysql from 'mysql2';
+import connection from '../database';
 
 const adminMeetingRouter = express.Router();
-const prisma = new PrismaClient();
+
+adminMeetingRouter.use(express.json());
 
 
-adminMeetingRouter.post('/create', async (req, res) => {
+// Create a new meeting
+adminMeetingRouter.post('/create', (req, res) => {
   const { title, date, time, place, audience, notes, userId } = req.body;
 
-  try {
-    const meeting = await prisma.meeting.create({
-      data: {
-        title,
-        date: new Date(date),
-        time: new Date(time),
-        place,
-        audience,
-        notes,
-        userId,
-      },
+  const query = `
+    INSERT INTO meeting (title, date, time, place, audience, notes, userId)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  connection.query(query, [title, new Date(date), new Date(time), place, audience, notes, userId], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error creating meeting.' });
+    }
+    res.status(201).json({
+      id: userId,
+      title,
+      date,
+      time,
+      place,
+      audience,
+      notes,
+      userId,
     });
-    res.status(201).json(meeting);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error creating meeting.' });
-  }
+  });
 });
 
 // Update an existing meeting
-adminMeetingRouter.put('/update/:id', async (req, res) => {
+adminMeetingRouter.put('/update/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);
   const { title, date, time, place, audience, notes, status } = req.body;
 
-  try {
-    const meeting = await prisma.meeting.findUnique({
-      where: { id },
-    });
+  const selectQuery = `SELECT * FROM meeting WHERE id = ?`;
 
-    if (!meeting) {
-      return res.status(404).json({ error: 'Meeting not found.' });
+  connection.query(selectQuery, [id], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error fetching meeting.' });
     }
 
-    const updatedMeeting = await prisma.meeting.update({
-      where: { id },
-      data: {
+    const updateQuery = `
+      UPDATE meeting
+      SET title = ?, date = ?, time = ?, place = ?, audience = ?, notes = ?, status = ?
+      WHERE id = ?
+    `;
+
+    connection.query(updateQuery, [title, new Date(date), new Date(time), place, audience, notes, status, id], (err) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Error updating meeting.' });
+      }
+      res.status(200).json({
+        id,
         title,
-        date: new Date(date),
-        time: new Date(time),
+        date,
+        time,
         place,
         audience,
         notes,
         status,
-      },
+      });
     });
-    res.status(200).json(updatedMeeting);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error updating meeting.' });
-  }
+  });
 });
 
 // Get all meetings
-adminMeetingRouter.get('/all', async (req, res) => {
-  try {
-    const meetings = await prisma.meeting.findMany();
-    res.status(200).json(meetings);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error fetching meetings.' });
-  }
+adminMeetingRouter.get('/all', (req, res) => {
+  const query = `SELECT * FROM meeting`;
+
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error fetching meetings.' });
+    }
+    res.status(200).json(results);
+  });
 });
 
 export default adminMeetingRouter;

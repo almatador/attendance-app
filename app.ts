@@ -12,10 +12,11 @@ import userSalaryRouter from './src/routes/user/userSalary';
 import adminSalaryRouter from './src/routes/admin/adminSalary';
 import adminMeetingRouter from './src/routes/admin/meetingadmin';
 import userMeetingRouter from './src/routes/user/meetinguser';
+import adminzoun from './src/routes/admin/adminzoun';
 
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port =  3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -27,6 +28,7 @@ app.use('/super', superAdminRouter);
 app.use('/attendance', attendanceRouter);
 app.use('/vacations', userVacationRouter);
 app.use('/vacationsadmin', adminVacationRouter);
+app.use('/zoun', adminzoun);
 
 app.use('/salaryuser', userSalaryRouter);
 app.use('/salaryadmin', adminSalaryRouter);

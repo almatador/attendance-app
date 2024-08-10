@@ -1,134 +1,118 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const client_1 = require("@prisma/client");
+const database_1 = __importDefault(require("../database"));
+const Middlewaresuperadmin_1 = __importDefault(require("../../Middleware/Middlewaresuperadmin")); // افترض أن هذا هو مسار الـ Middleware
 const ruleRouter = express_1.default.Router();
-const prisma = new client_1.PrismaClient();
+ruleRouter.use(Middlewaresuperadmin_1.default);
 // Create a new rule
-ruleRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+ruleRouter.post('/create', (req, res) => {
     const { name, description } = req.body;
-    try {
-        const rule = yield prisma.rule.create({
-            data: {
-                name,
-                description,
-            },
-        });
-        res.status(201).json(rule);
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'An error occurred while creating the rule.' });
-    }
-}));
+    const query = `
+    INSERT INTO rule (name, description)
+    VALUES (?, ?)
+  `;
+    database_1.default.query(query, [name, description], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'An error occurred while creating the rule.' });
+        }
+        // Cast results to ResultSetHeader to access insertId
+        const resultSetHeader = results;
+        res.status(201).json({ id: resultSetHeader.insertId, name, description });
+    });
+});
 // Get all rules
-ruleRouter.get('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const rules = yield prisma.rule.findMany();
-        res.status(200).json(rules);
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'An error occurred while fetching the rules.' });
-    }
-}));
+ruleRouter.get('/', (req, res) => {
+    const query = `SELECT * FROM rule`;
+    database_1.default.query(query, (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'An error occurred while fetching the rules.' });
+        }
+        res.status(200).json(results);
+    });
+});
 // Get a rule by ID
-ruleRouter.get('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    try {
-        const rule = yield prisma.rule.findUnique({
-            where: { id: parseInt(id, 10) },
-        });
-        if (rule) {
-            res.status(200).json(rule);
+ruleRouter.get('/:id', (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const query = `SELECT * FROM rule WHERE id = ?`;
+    database_1.default.query(query, [id], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'An error occurred while fetching the rule.' });
+        }
+        // Ensure results is an array
+        if (Array.isArray(results) && results.length > 0) {
+            res.status(200).json(results[0]);
         }
         else {
             res.status(404).json({ error: 'Rule not found.' });
         }
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'An error occurred while fetching the rule.' });
-    }
-}));
+    });
+});
 // Update a rule by ID
-ruleRouter.put('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
+ruleRouter.put('/:id', (req, res) => {
+    const id = parseInt(req.params.id, 10);
     const { name, description } = req.body;
-    try {
-        const updatedRule = yield prisma.rule.update({
-            where: { id: parseInt(id, 10) },
-            data: {
-                name,
-                description,
-            },
-        });
-        res.status(200).json(updatedRule);
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'An error occurred while updating the rule.' });
-    }
-}));
+    const query = `
+    UPDATE rule
+    SET name = ?, description = ?
+    WHERE id = ?
+  `;
+    database_1.default.query(query, [name, description, id], (err) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'An error occurred while updating the rule.' });
+        }
+        res.status(200).json({ id, name, description });
+    });
+});
 // Delete a rule by ID
-ruleRouter.delete('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    try {
-        yield prisma.rule.delete({
-            where: { id: parseInt(id, 10) },
-        });
+ruleRouter.delete('/:id', (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const query = `DELETE FROM rule WHERE id = ?`;
+    database_1.default.query(query, [id], (err) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'An error occurred while deleting the rule.' });
+        }
         res.status(204).send();
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'An error occurred while deleting the rule.' });
-    }
-}));
+    });
+});
 // Add a rule to a plan
-ruleRouter.post('/:ruleId/plan/:planId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { ruleId, planId } = req.params;
-    try {
-        const planRule = yield prisma.planRule.create({
-            data: {
-                ruleId: parseInt(ruleId, 10),
-                planId: parseInt(planId, 10),
-            },
-        });
-        res.status(201).json(planRule);
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'An error occurred while adding the rule to the plan.' });
-    }
-}));
+ruleRouter.post('/:ruleId/plan/:planId', (req, res) => {
+    const ruleId = parseInt(req.params.ruleId, 10);
+    const planId = parseInt(req.params.planId, 10);
+    const query = `
+    INSERT INTO plan_rule (ruleId, planId)
+    VALUES (?, ?)
+  `;
+    database_1.default.query(query, [ruleId, planId], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'An error occurred while adding the rule to the plan.' });
+        }
+        // Cast results to ResultSetHeader to access insertId
+        const resultSetHeader = results;
+        res.status(201).json({ id: resultSetHeader.insertId, ruleId, planId });
+    });
+});
 // Remove a rule from a plan
-ruleRouter.delete('/:ruleId/plan/:planId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { ruleId, planId } = req.params;
-    try {
-        yield prisma.planRule.deleteMany({
-            where: {
-                ruleId: parseInt(ruleId, 10),
-                planId: parseInt(planId, 10),
-            },
-        });
+ruleRouter.delete('/:ruleId/plan/:planId', (req, res) => {
+    const ruleId = parseInt(req.params.ruleId, 10);
+    const planId = parseInt(req.params.planId, 10);
+    const query = `DELETE FROM plan_rule WHERE ruleId = ? AND planId = ?`;
+    database_1.default.query(query, [ruleId, planId], (err) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'An error occurred while removing the rule from the plan.' });
+        }
         res.status(204).send();
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'An error occurred while removing the rule from the plan.' });
-    }
-}));
+    });
+});
 exports.default = ruleRouter;
 //# sourceMappingURL=rule.js.map

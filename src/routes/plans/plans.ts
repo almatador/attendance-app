@@ -1,93 +1,102 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import mysql from 'mysql2';
+import connection from '../database'; // Assuming you have a connection configured
+import verifySuperAdmin from '../../Middleware/Middlewaresuperadmin'; // افترض أن هذا هو مسار الـ Middleware
 
 const planRouter = express.Router();
-const prisma = new PrismaClient();
 
+planRouter.use(express.json());
 
-planRouter.post('/create', async (req, res) => {
+// حماية جميع المسارات بسوبر أدمن Middleware
+planRouter.use(verifySuperAdmin);
+
+// إنشاء خطة جديدة
+planRouter.post('/create', (req, res) => {
   const { name, description, price, duration } = req.body;
 
-  try {
-    const plan = await prisma.plan.create({
-      data: {
-        name,
-        description,
-        price,
-        duration,
-      },
-    });
-    res.status(201).json(plan);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while creating the plan.' });
-  }
+  const query = `
+    INSERT INTO plan (name, description, price, duration)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  connection.query(query, [name, description, price, duration], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while creating the plan.' });
+    }
+    res.status(201).json({ name, description, price, duration });
+  });
 });
 
-planRouter.get('/', async (req, res) => {
-  try {
-    const plans = await prisma.plan.findMany();
-    res.status(200).json(plans);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while fetching the plans.' });
-  }
+// الحصول على جميع الخطط
+planRouter.get('/', (req, res) => {
+  const query = `SELECT * FROM plan`;
+
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while fetching the plans.' });
+    }
+    res.status(200).json(results);
+  });
 });
 
-planRouter.get('/:id', async (req, res) => {
-  const { id } = req.params;
+// الحصول على خطة بواسطة ID
+planRouter.get('/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10);
 
-  try {
-    const plan = await prisma.plan.findUnique({
-      where: { id: parseInt(id, 10) },
-    });
+  const query = `SELECT * FROM plan WHERE id = ?`;
 
-    if (plan) {
-      res.status(200).json(plan);
+  connection.query(query, [id], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while fetching the plan.' });
+    }
+
+    // Type assertion to RowDataPacket[]
+    const rows = results as mysql.RowDataPacket[];
+
+    if (rows.length > 0) {
+      res.status(200).json(rows[0]);
     } else {
       res.status(404).json({ error: 'Plan not found.' });
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while fetching the plan.' });
-  }
+  });
 });
 
-planRouter.put('/:id', async (req, res) => {
-  const { id } = req.params;
+// تحديث خطة
+planRouter.put('/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10);
   const { name, description, price, duration } = req.body;
 
-  try {
-    const updatedPlan = await prisma.plan.update({
-      where: { id: parseInt(id, 10) },
-      data: {
-        name,
-        description,
-        price,
-        duration,
-      },
-    });
+  const query = `
+    UPDATE plan
+    SET name = ?, description = ?, price = ?, duration = ?
+    WHERE id = ?
+  `;
 
-    res.status(200).json(updatedPlan);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while updating the plan.' });
-  }
+  connection.query(query, [name, description, price, duration, id], (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while updating the plan.' });
+    }
+    res.status(200).json({ id, name, description, price, duration });
+  });
 });
 
-planRouter.delete('/:id', async (req, res) => {
-  const { id } = req.params;
+// حذف خطة
+planRouter.delete('/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10);
 
-  try {
-    await prisma.plan.delete({
-      where: { id: parseInt(id, 10) },
-    });
+  const query = `DELETE FROM plan WHERE id = ?`;
 
+  connection.query(query, [id], (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while deleting the plan.' });
+    }
     res.status(204).send();
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while deleting the plan.' });
-  }
+  });
 });
 
 export default planRouter;

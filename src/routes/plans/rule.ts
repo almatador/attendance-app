@@ -1,132 +1,137 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import mysql from 'mysql2';
+import connection from '../database';
+import verifySuperAdmin from '../../Middleware/Middlewaresuperadmin'; // افترض أن هذا هو مسار الـ Middleware
 
 const ruleRouter = express.Router();
-const prisma = new PrismaClient();
 
+
+ruleRouter.use(verifySuperAdmin);
 
 // Create a new rule
-ruleRouter.post('/create', async (req, res) => {
+ruleRouter.post('/create', (req, res) => {
   const { name, description } = req.body;
 
-  try {
-    const rule = await prisma.rule.create({
-      data: {
-        name,
-        description,
-      },
-    });
-    res.status(201).json(rule);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while creating the rule.' });
-  }
+  const query = `
+    INSERT INTO rule (name, description)
+    VALUES (?, ?)
+  `;
+
+  connection.query(query, [name, description], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while creating the rule.' });
+    }
+    // Cast results to ResultSetHeader to access insertId
+    const resultSetHeader = results as mysql.ResultSetHeader;
+    res.status(201).json({ id: resultSetHeader.insertId, name, description });
+  });
 });
 
 // Get all rules
-ruleRouter.get('/', async (req, res) => {
-  try {
-    const rules = await prisma.rule.findMany();
-    res.status(200).json(rules);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while fetching the rules.' });
-  }
+ruleRouter.get('/', (req, res) => {
+  const query = `SELECT * FROM rule`;
+
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while fetching the rules.' });
+    }
+    res.status(200).json(results);
+  });
 });
 
 // Get a rule by ID
-ruleRouter.get('/:id', async (req, res) => {
-  const { id } = req.params;
+ruleRouter.get('/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10);
 
-  try {
-    const rule = await prisma.rule.findUnique({
-      where: { id: parseInt(id, 10) },
-    });
+  const query = `SELECT * FROM rule WHERE id = ?`;
 
-    if (rule) {
-      res.status(200).json(rule);
+  connection.query(query, [id], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while fetching the rule.' });
+    }
+
+    // Ensure results is an array
+    if (Array.isArray(results) && results.length > 0) {
+      res.status(200).json(results[0]);
     } else {
       res.status(404).json({ error: 'Rule not found.' });
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while fetching the rule.' });
-  }
+  });
 });
 
 // Update a rule by ID
-ruleRouter.put('/:id', async (req, res) => {
-  const { id } = req.params;
+ruleRouter.put('/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10);
   const { name, description } = req.body;
 
-  try {
-    const updatedRule = await prisma.rule.update({
-      where: { id: parseInt(id, 10) },
-      data: {
-        name,
-        description,
-      },
-    });
+  const query = `
+    UPDATE rule
+    SET name = ?, description = ?
+    WHERE id = ?
+  `;
 
-    res.status(200).json(updatedRule);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while updating the rule.' });
-  }
+  connection.query(query, [name, description, id], (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while updating the rule.' });
+    }
+    res.status(200).json({ id, name, description });
+  });
 });
 
 // Delete a rule by ID
-ruleRouter.delete('/:id', async (req, res) => {
-  const { id } = req.params;
+ruleRouter.delete('/:id', (req, res) => {
+  const id = parseInt(req.params.id, 10);
 
-  try {
-    await prisma.rule.delete({
-      where: { id: parseInt(id, 10) },
-    });
+  const query = `DELETE FROM rule WHERE id = ?`;
 
+  connection.query(query, [id], (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while deleting the rule.' });
+    }
     res.status(204).send();
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while deleting the rule.' });
-  }
+  });
 });
 
 // Add a rule to a plan
-ruleRouter.post('/:ruleId/plan/:planId', async (req, res) => {
-  const { ruleId, planId } = req.params;
+ruleRouter.post('/:ruleId/plan/:planId', (req, res) => {
+  const ruleId = parseInt(req.params.ruleId, 10);
+  const planId = parseInt(req.params.planId, 10);
 
-  try {
-    const planRule = await prisma.planRule.create({
-      data: {
-        ruleId: parseInt(ruleId, 10),
-        planId: parseInt(planId, 10),
-      },
-    });
+  const query = `
+    INSERT INTO plan_rule (ruleId, planId)
+    VALUES (?, ?)
+  `;
 
-    res.status(201).json(planRule);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while adding the rule to the plan.' });
-  }
+  connection.query(query, [ruleId, planId], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while adding the rule to the plan.' });
+    }
+    // Cast results to ResultSetHeader to access insertId
+    const resultSetHeader = results as mysql.ResultSetHeader;
+    res.status(201).json({ id: resultSetHeader.insertId, ruleId, planId });
+  });
 });
 
 // Remove a rule from a plan
-ruleRouter.delete('/:ruleId/plan/:planId', async (req, res) => {
-  const { ruleId, planId } = req.params;
+ruleRouter.delete('/:ruleId/plan/:planId', (req, res) => {
+  const ruleId = parseInt(req.params.ruleId, 10);
+  const planId = parseInt(req.params.planId, 10);
 
-  try {
-    await prisma.planRule.deleteMany({
-      where: {
-        ruleId: parseInt(ruleId, 10),
-        planId: parseInt(planId, 10),
-      },
-    });
+  const query = `DELETE FROM plan_rule WHERE ruleId = ? AND planId = ?`;
 
+  connection.query(query, [ruleId, planId], (err) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'An error occurred while removing the rule from the plan.' });
+    }
     res.status(204).send();
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred while removing the rule from the plan.' });
-  }
+  });
 });
 
 export default ruleRouter;
