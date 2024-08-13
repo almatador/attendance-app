@@ -104,8 +104,8 @@ superAdminRouter.post('/logout', (req, res) => {
         res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
     });
 });
-superAdminRouter.get('/getall', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const query = `SELECT * FROM superadmin`;
+superAdminRouter.get('/getall', (req, res) => {
+    const query = `SELECT * FROM Admin WHERE role = 'superadmin'`;
     database_1.default.query(query, (err, results) => {
         if (err) {
             console.error(err);
@@ -113,6 +113,6 @@ superAdminRouter.get('/getall', (req, res) => __awaiter(void 0, void 0, void 0, 
         }
         res.status(200).json(results);
     });
-}));
+});
 exports.default = superAdminRouter;
 //# sourceMappingURL=superadmin.js.map

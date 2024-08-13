@@ -120,15 +120,16 @@ superAdminRouter.post('/logout', (req, res) => {
       res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
     });
   });
-superAdminRouter.get('/getall', async(req , res )=> {
-  const query = `SELECT * FROM superadmin`;
-  connection.query(query, (err, results: mysql.RowDataPacket[]) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Error fetching superadmin requests.' });
-    }
-    res.status(200).json(results);
-  });
-
+  superAdminRouter.get('/getall', (req, res) => {
+    const query = `SELECT * FROM Admin WHERE role = 'superadmin'`;
+    
+    connection.query(query, (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Error fetching superadmin requests.' });
+        }
+        res.status(200).json(results);
+    });
 });
+
 export default superAdminRouter;
