@@ -15,19 +15,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const database_1 = __importDefault(require("../database"));
 const geolib_1 = __importDefault(require("geolib"));
-const Middlewareuser_1 = __importDefault(require("../../Middleware/Middlewareuser"));
 const attendanceRouter = express_1.default.Router();
-attendanceRouter.use(Middlewareuser_1.default);
 attendanceRouter.post('/checkin', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId, checkInTime, latitude, longitude } = req.body;
     try {
         // Fetch user
-        const [userRows] = yield database_1.default.execute('SELECT * FROM Users WHERE id = ?', [userId]);
+        const [userRows] = yield database_1.default.promise().query('SELECT * FROM Users WHERE id = ?', [userId]);
         const user = userRows[0];
         if (!user)
             return res.status(404).json({ error: 'User not found.' });
         // Fetch zones
-        const [zoneRows] = yield database_1.default.execute('SELECT * FROM Zones WHERE adminId = ?', [user.adminId]);
+        const [zoneRows] = yield database_1.default.promise().query('SELECT * FROM Zones WHERE adminId = ?', [user.adminId]);
         const zones = zoneRows;
         // Check if user is in any zone
         const employeeLocation = { latitude, longitude };
@@ -43,7 +41,7 @@ attendanceRouter.post('/checkin', (req, res) => __awaiter(void 0, void 0, void 0
             return res.status(400).send('You are not in the allowed zone to check-in.');
         }
         // Check-in
-        const [checkInResult] = yield database_1.default.execute('CALL CheckIn(?, ?)', [userId, checkInTime]);
+        const [checkInResult] = yield database_1.default.promise().query('CALL CheckIn(?, ?)', [userId, checkInTime]);
         res.status(201).json(checkInResult);
     }
     catch (error) {
@@ -54,10 +52,11 @@ attendanceRouter.post('/checkin', (req, res) => __awaiter(void 0, void 0, void 0
 attendanceRouter.post('/checkout', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userId, checkOutTime, latitude, longitude } = req.body;
     try {
+        // Fetch zones
+        const [zoneRows] = yield database_1.default.promise().query('SELECT * FROM Zones');
+        const zones = zoneRows;
         // Check if user is in any zone
         const employeeLocation = { latitude, longitude };
-        const [zoneRows] = yield database_1.default.execute('SELECT * FROM Zones');
-        const zones = zoneRows;
         let isInZone = false;
         for (const zone of zones) {
             const zoneCenter = { latitude: zone.center_latitude, longitude: zone.center_longitude };
@@ -71,7 +70,7 @@ attendanceRouter.post('/checkout', (req, res) => __awaiter(void 0, void 0, void 
             return res.status(400).send('You are not in the allowed zone to check-out.');
         }
         // Check-out
-        const [checkOutResult] = yield database_1.default.execute('CALL CheckOut(?, ?)', [userId, checkOutTime]);
+        const [checkOutResult] = yield database_1.default.promise().query('CALL CheckOut(?, ?)', [userId, checkOutTime]);
         res.status(200).json(checkOutResult);
     }
     catch (error) {
@@ -80,15 +79,16 @@ attendanceRouter.post('/checkout', (req, res) => __awaiter(void 0, void 0, void 
     }
 }));
 // Get my attendance records
-attendanceRouter.get('/myrecords', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const userId = req.query.userId;
-    if (!userId) {
-        return res.status(400).json({ error: 'User ID is required.' });
+attendanceRouter.get('/myrecords/:userId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const userId = parseInt(req.params.userId, 10);
+    if (isNaN(userId)) {
+        return res.status(400).json({ error: 'Invalid User ID.' });
     }
     try {
         // Fetch records
-        const [recordRows] = yield database_1.default.execute('CALL GetMyRecords(?)', [parseInt(userId, 10)]);
-        res.status(200).json(recordRows[0]); // Typically, results are returned in [0]
+        const [recordRows] = yield database_1.default.promise().query('CALL GetMyRecords(?)', [userId]);
+        const records = recordRows[0]; // Typically, results are returned in [0]
+        res.status(200).json(records);
     }
     catch (error) {
         console.error(error);

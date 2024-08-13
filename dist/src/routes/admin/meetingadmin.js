@@ -20,7 +20,6 @@ adminMeetingRouter.post('/create', (req, res) => {
             return res.status(500).json({ error: 'Error creating meeting.' });
         }
         res.status(201).json({
-            id: userId,
             title,
             date,
             time,

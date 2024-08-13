@@ -13,17 +13,33 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const client_1 = require("@prisma/client");
+const database_1 = __importDefault(require("../database"));
 const userSalaryRouter = express_1.default.Router();
-const prisma = new client_1.PrismaClient();
 // Get all salary records for a user
 userSalaryRouter.get('/user/:userId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = parseInt(req.params.userId, 10);
+    const { token } = req.headers; // التوكن يتم إرساله كجزء من الهيدر
+    if (!token) {
+        return res.status(400).json({ error: 'التوكن مطلوب.' });
+    }
     try {
-        const salaries = yield prisma.salary.findMany({
-            where: { userId },
+        // التحقق من صحة التوكن
+        const tokenQuery = 'SELECT * FROM secretKeyuser WHERE token = ? AND userId = ?';
+        database_1.default.query(tokenQuery, [token, userId], (err, tokenResults) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Error verifying token.' });
+            }
+            // إذا كان التوكن صالحًا، جلب سجلات الرواتب
+            const salaryQuery = 'SELECT * FROM Salary WHERE userId = ?';
+            database_1.default.query(salaryQuery, [userId], (err, salaryResults) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json({ error: 'Error fetching salary records.' });
+                }
+                res.status(200).json(salaryResults);
+            });
         });
-        res.status(200).json(salaries);
     }
     catch (error) {
         console.error(error);

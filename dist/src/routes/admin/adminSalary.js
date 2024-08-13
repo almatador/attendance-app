@@ -57,5 +57,26 @@ adminSalaryRouter.get('/all', (req, res) => {
         res.status(200).json(results);
     });
 });
+adminSalaryRouter.get('/all/:adminId', (req, res) => {
+    const { adminId } = req.params;
+    const query = `
+    SELECT s.*
+    FROM salary s
+    JOIN user u ON s.userId = u.id
+    WHERE u.adminId = ?
+  `;
+    database_1.default.query(query, [adminId], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Error fetching salary records.' });
+        }
+        // Cast results to Salary[] if needed, depending on the actual returned data
+        const salaries = results;
+        if (salaries.length === 0) {
+            return res.status(404).json({ message: 'No salary records found for this admin.' });
+        }
+        res.status(200).json(salaries);
+    });
+});
 exports.default = adminSalaryRouter;
 //# sourceMappingURL=adminSalary.js.map

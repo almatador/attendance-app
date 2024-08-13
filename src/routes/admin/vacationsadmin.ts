@@ -7,6 +7,7 @@ const adminVacationRouter = express.Router();
 // Define the type for vacation request
 interface VacationRequest {
   id: number;
+  description:string;
   userId: number;
   startDate: string;
   endDate: string;

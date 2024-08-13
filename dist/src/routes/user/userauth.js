@@ -13,67 +13,58 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const client_1 = require("@prisma/client");
-const bcrypt_1 = __importDefault(require("bcrypt"));
 const crypto_1 = __importDefault(require("crypto"));
+const database_1 = __importDefault(require("../database"));
+const bcrypt_1 = __importDefault(require("bcrypt"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const userRouter = express_1.default.Router();
-const prisma = new client_1.PrismaClient();
+const jwtSecret = 'your_jwt_secret'; // Replace with your own secret key
 const generateSecretKey = () => {
     return crypto_1.default.randomBytes(64).toString('hex');
 };
-userRouter.delete('/logout/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params; // Assuming id is passed as a route parameter
-    try {
-        const deletedSecretKey = yield prisma.secretKeyuser.deleteMany({
-            where: { userId: parseInt(id) },
-        });
-        if (!deletedSecretKey.count || deletedSecretKey.count === 0) {
-            return res.status(404).send('Secret key not found for the user.');
-        }
-        res.status(200).send('Logged out successfully.');
-    }
-    catch (error) {
-        console.error('Logout error:', error);
-        res.status(500).send('An error occurred while logging out.');
-    }
-}));
-userRouter.get('/users', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const users = yield prisma.user.findMany();
-        res.status(200).json(users);
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Error fetching users.' });
-    }
-}));
+const verifyPassword = (password, hashedPassword) => __awaiter(void 0, void 0, void 0, function* () {
+    return bcrypt_1.default.compare(password, hashedPassword);
+});
 userRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { email, password } = req.body;
-    try {
-        const user = yield prisma.user.findUnique({ where: { email } });
-        if (!user) {
-            return res.status(404).json({ error: 'User not found.' });
+    const { username, password } = req.body;
+    const query = `SELECT * FROM user WHERE username = ?`;
+    database_1.default.query(query, [username], (err, results) => __awaiter(void 0, void 0, void 0, function* () {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'خطأ في التحقق من بيانات المدير.' });
         }
-        const isValid = yield bcrypt_1.default.compare(password, user.password);
-        if (!isValid) {
-            return res.status(401).json({ error: 'Invalid password.' });
+        if (!results.length) {
+            return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
         }
-        const existingToken = yield prisma.secretKeyuser.findFirst({
-            where: { userId: user.id }
+        const user = results[0];
+        const match = yield verifyPassword(password, user.password);
+        if (!match) {
+            return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
+        }
+        const token = jsonwebtoken_1.default.sign({ adminId: user.id }, jwtSecret, { expiresIn: '1h' });
+        const insertTokenQuery = `INSERT INTO SecretKeyuser (userId, token) VALUES (?, ?)`;
+        database_1.default.query(insertTokenQuery, [user.id, token], (err) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
+            }
+            res.status(200).json({ token });
         });
-        if (existingToken) {
-            return res.status(403).json({ error: 'User already logged in.' });
+    }));
+}));
+userRouter.delete('/logout', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { token } = req.body;
+    if (!token) {
+        return res.status(400).json({ error: 'التوكن مطلوب.' });
+    }
+    const deleteTokenQuery = `DELETE FROM SecretKeyAdmin WHERE token = ?`;
+    database_1.default.query(deleteTokenQuery, [token], (err) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'خطأ في إلغاء التوكن.' });
         }
-        const token = generateSecretKey();
-        // Create or update token in SecretKeyuser table
-        yield prisma.secretKeyuser.updateMany({
-            where: { userId: user.id },
-            data: { token: token },
-        });
-        res.status(200).json({ token });
-    }
-    catch (error) {
-        res.status(500).json({ error: 'Error logging in.' });
-    }
+        res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
+    });
 }));
 exports.default = userRouter;
 //# sourceMappingURL=userauth.js.map

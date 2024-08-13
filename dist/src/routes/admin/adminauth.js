@@ -33,17 +33,17 @@ const verifyPassword = (password, hashedPassword) => __awaiter(void 0, void 0, v
     return bcrypt_1.default.compare(password, hashedPassword);
 });
 adminRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, username, email, phoneNumber, password } = req.body;
+    const { name, username, email, phoneNumber, password, role = 'admin' } = req.body;
     if (!name || !username || !email || !phoneNumber || !password) {
         return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
     }
     try {
         const hashedPassword = yield hashPassword(password);
         const query = `
-      INSERT INTO Admin (name, username, email, phoneNumber, password)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO admin (name, username, email, phoneNumber, password, role)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
-        database_1.default.query(query, [name, username, email, phoneNumber, hashedPassword], (err, results) => {
+        database_1.default.query(query, [name, username, email, phoneNumber, hashedPassword, role], (err, results) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
@@ -55,6 +55,7 @@ adminRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0, func
                 username,
                 email,
                 phoneNumber,
+                role
             });
         });
     }
@@ -190,10 +191,33 @@ adminRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, funct
                 console.error(err);
                 return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
             }
-            res.status(200).json({ token });
+            res.status(200).json({ token: token, admin: admin.role });
         });
     }));
 }));
+adminRouter.get('/users/:adminId', (req, res) => {
+    const { adminId } = req.params;
+    const query = `SELECT * FROM user WHERE adminId = ?`;
+    database_1.default.query(query, [adminId], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({
+                error: 'Error fetching users.',
+                message: err.message,
+            });
+        }
+        // Assuming `results` is an array of rows, we map them to the `User` interface
+        const users = results.map((row) => ({
+            id: row.id,
+            name: row.name,
+            email: row.email,
+            password: row.password,
+            jobTitle: row.jobTitle,
+            adminId: row.adminId,
+        }));
+        res.status(200).json(users);
+    });
+});
 // تسجيل الخروج
 adminRouter.post('/logout', (req, res) => {
     const { token } = req.body;

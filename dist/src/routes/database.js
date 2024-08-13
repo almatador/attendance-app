@@ -11,12 +11,5 @@ const connection = mysql2_1.default.createConnection({
     password: '',
     database: 'matador',
 });
-connection.connect((err) => {
-    if (err) {
-        console.error('خطأ في الاتصال بقاعدة البيانات: ', err.stack);
-        return;
-    }
-    console.log('متصل بقاعدة البيانات كـ id ' + connection.threadId);
-});
 exports.default = connection;
 //# sourceMappingURL=database.js.map

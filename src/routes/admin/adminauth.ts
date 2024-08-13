@@ -1,5 +1,5 @@
 import express from 'express';
-import mysql from 'mysql2';
+import mysql from 'mysql2/promise';
 import connection from '../database';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
@@ -17,7 +17,19 @@ interface Admin {
   id: number;
   username: string;
   password: string;
+  role:string;
+  
+}   
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  password: string;
+  jobTitle: string;
+  adminId: number;
+
 }
+
 
 // دالة لتشفير كلمة المرور
 const hashPassword = async (password: string): Promise<string> => {
@@ -31,7 +43,7 @@ const verifyPassword = async (password: string, hashedPassword: string): Promise
 };
 
 adminRouter.post('/create', async (req, res) => {
-  const { name, username, email, phoneNumber, password } = req.body;
+  const { name, username, email, phoneNumber, password, role ='admin' } = req.body;
 
   if (!name || !username || !email || !phoneNumber || !password) {
     return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
@@ -40,11 +52,11 @@ adminRouter.post('/create', async (req, res) => {
   try {
     const hashedPassword = await hashPassword(password);
     const query = `
-      INSERT INTO Admin (name, username, email, phoneNumber, password)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO admin (name, username, email, phoneNumber, password, role)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
-    
-    connection.query(query, [name, username, email, phoneNumber, hashedPassword], (err, results) => {
+
+    connection.query(query, [name, username, email, phoneNumber, hashedPassword ,role], (err, results) => {
       if (err) {
         console.error(err);
         return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
@@ -58,6 +70,7 @@ adminRouter.post('/create', async (req, res) => {
         username,
         email,
         phoneNumber,
+        role
       });
     });
   } catch (error) {
@@ -132,14 +145,14 @@ adminRouter.post('/user/create', async (req, res) => {
     VALUES (?, ?, ?, ?, ?)
   `;
 
-  connection.query(query, [name, email, hashedPassword, jobTitle, adminId], (err,results) => {
+  connection.query(query, [name, email, hashedPassword, jobTitle, adminId], (err, results) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ error: 'Error creating User.' });
     }
     const newId = (results as mysql.OkPacket).insertId;
 
-    res.status(201).json({id:newId, name, email, password, adminId, jobTitle });
+    res.status(201).json({ id: newId, name, email, password, adminId, jobTitle });
   });
 });
 
@@ -204,7 +217,7 @@ adminRouter.post('/login', async (req, res) => {
     }
 
     const admin: Admin = results[0] as Admin;
-    
+
     const match = await verifyPassword(password, admin.password);
     if (!match) {
       return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
@@ -219,10 +232,41 @@ adminRouter.post('/login', async (req, res) => {
         return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
       }
 
-      res.status(200).json({ token });
+      res.status(200).json({ token:token , admin: admin.role});
     });
   });
 });
+adminRouter.get('/users/:adminId', (req, res) => {
+  const { adminId } = req.params;
+  const query = `SELECT * FROM user WHERE adminId = ?`;
+
+  connection.query(query, [adminId], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({
+        error: 'Error fetching users.',
+        message: err.message,
+      });
+    }
+
+    // Assuming `results` is an array of rows, we map them to the `User` interface
+    const users: User[] = (results as any[]).map((row) => ({
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      password: row.password,
+      jobTitle: row.jobTitle,
+      adminId: row.adminId,
+    }));
+
+    res.status(200).json(users);
+  });
+});
+
+
+
+
+
 
 // تسجيل الخروج
 adminRouter.post('/logout', (req, res) => {

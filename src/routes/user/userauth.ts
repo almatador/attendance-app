@@ -1,76 +1,82 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import connection from '../database';
+import mysql from 'mysql2/promise';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken'; 
 
 const userRouter = express.Router();
-const prisma = new PrismaClient();
 
+interface user {
+  id: number;
+  name: string;
+  email: string;
+  password: string;
+  jobTitle: string;
+  adminId: number;
+}
+const jwtSecret = 'your_jwt_secret'; // Replace with your own secret key
 
 const generateSecretKey = () => {
     return crypto.randomBytes(64).toString('hex');
 };
+const verifyPassword = async (password: string, hashedPassword: string): Promise<boolean> => {
+  return bcrypt.compare(password, hashedPassword);
+};
 
-userRouter.delete('/logout/:id', async (req, res) => {
-    const { id } = req.params; // Assuming id is passed as a route parameter
-
-    try {
-        const deletedSecretKey = await prisma.secretKeyuser.deleteMany({
-            where: { userId: parseInt(id) },
-        });
-
-        if (!deletedSecretKey.count || deletedSecretKey.count === 0) {
-            return res.status(404).send('Secret key not found for the user.');
-        }
-
-        res.status(200).send('Logged out successfully.');
-    } catch (error) {
-        console.error('Logout error:', error);
-        res.status(500).send('An error occurred while logging out.');
-    }
-});
-userRouter.get('/users', async (req, res) => {
-    try {
-      const users = await prisma.user.findMany();
-      res.status(200).json(users);
-    } catch (error) {
-      res.status(500).json({ error: 'Error fetching users.' });
-    }
-});
 userRouter.post('/login', async (req, res) => {
-    const { email, password } = req.body;
-  
-    try {
-      const user = await prisma.user.findUnique({ where: { email } });
-  
-      if (!user) {
-        return res.status(404).json({ error: 'User not found.' });
-      }
-  
-      const isValid = await bcrypt.compare(password, user.password);
-  
-      if (!isValid) {
-        return res.status(401).json({ error: 'Invalid password.' });
-      }
-      const existingToken = await prisma.secretKeyuser.findFirst({
-        where: { userId: user.id }
-      });
-  
-      if (existingToken) {
-        return res.status(403).json({ error: 'User already logged in.' });
-      }
-  
-      const token = generateSecretKey();
-
-      // Create or update token in SecretKeyuser table
-      await prisma.secretKeyuser.updateMany({
-        where: { userId: user.id },
-        data: { token: token },
-      });
-      res.status(200).json({ token });
-    } catch (error) {
-      res.status(500).json({ error: 'Error logging in.' });
+  const { username, password } = req.body;
+  const query = `SELECT * FROM user WHERE username = ?`;
+  connection.query(query, [username], async (err, results: mysql.RowDataPacket[]) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'خطأ في التحقق من بيانات المدير.' });
     }
+
+    if (!results.length) {
+      return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
+    }
+
+    const user: user = results[0] as user;
+
+    const match = await verifyPassword(password, user.password);
+    if (!match) {
+      return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
+    }
+
+    const token = jwt.sign({ adminId: user.id }, jwtSecret, { expiresIn: '1h' });
+
+    const insertTokenQuery = `INSERT INTO SecretKeyuser (userId, token) VALUES (?, ?)`;
+    connection.query(insertTokenQuery, [user.id, token], (err) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
+      }
+
+      res.status(200).json({ token });
+    });
   });
+});
+userRouter.delete('/logout', async (req, res) => {
+
+  const { token } = req.body;
+
+
+
+      if (!token) {
+        return res.status(400).json({ error: 'التوكن مطلوب.' });
+      }
+    
+      const deleteTokenQuery = `DELETE FROM SecretKeyAdmin WHERE token = ?`;
+    
+      connection.query(deleteTokenQuery, [token], (err) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: 'خطأ في إلغاء التوكن.' });
+        }
+    
+        res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
+      });
+});
   
 export default userRouter;  

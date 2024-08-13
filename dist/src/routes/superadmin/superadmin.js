@@ -37,10 +37,11 @@ superAdminRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0,
     try {
         const hashedPassword = yield hashPassword(password);
         const query = `
-        INSERT INTO superadmin (name, username, email, phoneNumber, password)
-        VALUES (?, ?, ?, ?, ?)
-      `;
-        database_1.default.query(query, [name, username, email, phoneNumber, hashedPassword], (err, results) => {
+      INSERT INTO admin (name, username, email, phoneNumber, password, role)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+        const role = 'superadmin';
+        database_1.default.query(query, [name, username, email, phoneNumber, hashedPassword, role], (err, results) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
@@ -52,6 +53,7 @@ superAdminRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0,
                 username,
                 email,
                 phoneNumber,
+                role
             });
         });
     }
@@ -62,7 +64,7 @@ superAdminRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0,
 }));
 superAdminRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, password } = req.body;
-    const query = `SELECT * FROM superadmin WHERE username = ?`;
+    const query = `SELECT * FROM Admim WHERE username = ?`;
     database_1.default.query(query, [username], (err, results) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
             console.error(err);
@@ -83,7 +85,7 @@ superAdminRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, 
                 console.error(err);
                 return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
             }
-            res.status(200).json({ token });
+            res.status(200).json({ admin, token });
         });
     }));
 }));
@@ -102,5 +104,15 @@ superAdminRouter.post('/logout', (req, res) => {
         res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
     });
 });
+superAdminRouter.get('/getall', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const query = `SELECT * FROM superadmin`;
+    database_1.default.query(query, (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Error fetching superadmin requests.' });
+        }
+        res.status(200).json(results);
+    });
+}));
 exports.default = superAdminRouter;
 //# sourceMappingURL=superadmin.js.map

@@ -14,55 +14,98 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const database_1 = __importDefault(require("../database"));
-const Middlewareadmin_1 = __importDefault(require("../../Middleware/Middlewareadmin"));
 const adminzoun = express_1.default.Router();
-adminzoun.use(Middlewareadmin_1.default);
 // إضافة زون جديدة
-adminzoun.post('/zones', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, center_latitude, center_longitude, radius, adminId } = req.body;
+adminzoun.post('/zones/:adminId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { name, center_latitude, center_longitude, radius } = req.body;
+    const { adminId } = req.params;
+    if (!name || !center_latitude || !center_longitude || !radius || !radius || !adminId) {
+        return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
+    }
     try {
-        const [result] = yield database_1.default.execute('INSERT INTO Zones (name, center_latitude, center_longitude, radius, adminId) VALUES (?, ?, ?, ?, ?)', [name, center_latitude, center_longitude, radius, adminId]);
-        res.status(201).json({ id: result.ID, name, center_latitude, center_longitude, radius });
+        const query = `
+    INSERT INTO zones (name, center_latitude, center_longitude, radius, adminId)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+        database_1.default.query(query, [name, center_latitude, center_longitude, radius, adminId], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
+            }
+            const newId = results.insertId;
+            res.status(201).json({
+                id: newId,
+                name,
+                center_latitude,
+                center_longitude,
+                radius,
+                adminId
+            });
+        });
     }
     catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error adding new zone.' });
+        console.error('Error in POST /zones:', error);
+        res.status(500).json({
+            error: 'Error adding new zone.',
+            message: error.message
+        });
     }
 }));
+// تحديث زون
 adminzoun.put('/zones/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const { name, center_latitude, center_longitude, radius } = req.body;
+    // التحقق من وجود جميع الحقول
+    if (!name || !center_latitude || !center_longitude || !radius) {
+        return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
+    }
+    const query = 'UPDATE zones SET name = ?, center_latitude = ?, center_longitude = ?, radius = ? WHERE id = ?';
+    const params = [name, center_latitude, center_longitude, radius, id];
     try {
-        yield database_1.default.execute('UPDATE Zones SET name = ?, center_latitude = ?, center_longitude = ?, radius = ? WHERE id = ?', [name, center_latitude, center_longitude, radius, id]);
-        res.status(200).json({ id, name, center_latitude, center_longitude, radius });
+        database_1.default.query(query, params, (err) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Error updating User.' });
+            }
+            res.status(200).json({ id, name, center_latitude, center_longitude, radius });
+        });
+        //   const [result] = await connection.execute<mysql.OkPacket>(query, [name, center_latitude, center_longitude, radius, id]);
+        //   if ((result as mysql.OkPacket).affectedRows === 0) {
+        //     return res.status(404).json({ error: 'Zone not found.' });
+        //   }
+        //   res.status(200).json({ id, name, center_latitude, center_longitude, radius });
     }
     catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error updating zone.' });
+        console.error('Error in PUT /zones/:id:', error);
+        res.status(500).json({ error: 'Error updating zone.', message: error.message });
     }
 }));
 // حذف زون
 adminzoun.delete('/zones/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    try {
-        yield database_1.default.execute('DELETE FROM Zones WHERE id = ?', [id]);
+    const query = `
+    DELETE FROM zones
+    WHERE id = ?
+  `;
+    database_1.default.query(query, [id], (err) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Error deleting User.' });
+        }
         res.status(204).send();
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error deleting zone.' });
-    }
+    });
 }));
-// الحصول على جميع الزونات
-adminzoun.get('/zones', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const zones = yield database_1.default.execute('SELECT * FROM Zones');
-        res.status(200).json(zones);
-    }
-    catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error fetching zones.' });
-    }
+// // الحصول على جميع الزونات
+adminzoun.get('/zones/:adminId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { adminId } = req.params;
+    const query = 'SELECT * FROM zones WHERE adminId = ?';
+    database_1.default.query(query, [adminId], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Error fetching vacation requests.' });
+        }
+        res.status(200).json(results);
+    });
 }));
 exports.default = adminzoun;
 //# sourceMappingURL=adminzoun.js.map

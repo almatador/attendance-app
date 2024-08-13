@@ -256,3 +256,12 @@ ALTER TABLE `_AdminUsers` ADD CONSTRAINT `_AdminUsers_A_fkey` FOREIGN KEY (`A`) 
 
 -- AddForeignKey
 ALTER TABLE `_AdminUsers` ADD CONSTRAINT `_AdminUsers_B_fkey` FOREIGN KEY (`B`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE Zones
+ADD COLUMN adminId INT NOT NULL;
+
+-- Optionally, add a foreign key constraint if you have an `Admins` table
+ALTER TABLE Zones ADD COLUMN adminId INT NOT NULL;
+ALTER TABLE `Vacation`
+ADD COLUMN `description` TEXT NULL;
+
+

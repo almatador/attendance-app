@@ -1,61 +1,66 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import connection from '../database';
+import { RowDataPacket } from 'mysql2';
+
+interface LeaveResult extends RowDataPacket {
+  annualLeaveDays?: number;
+  emergencyLeaveDays?: number;
+}
 
 const userVacationRouter = express.Router();
-const prisma = new PrismaClient();
 
-
-userVacationRouter.post('/create', async (req, res) => {
+userVacationRouter.post('/create', (req, res) => {
   const { userId, startDate, endDate, reason, type } = req.body;
 
-  try {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const duration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const duration = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found.' });
+  const userQuery = 'SELECT * FROM Users WHERE id = ?';
+  connection.query(userQuery, [userId], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error checking user.' });
     }
 
-    if (type === 'Annual' && user.annualLeaveDays < duration) {
-      return res.status(400).json({ error: 'Insufficient annual leave days.' });
+    let leaveCheckQuery = '';
+    if (type === 'Annual') {
+      leaveCheckQuery = 'SELECT annualLeaveDays FROM Users WHERE id = ?';
+    } else if (type === 'Emergency') {
+      leaveCheckQuery = 'SELECT emergencyLeaveDays FROM Users WHERE id = ?';
+    } else {
+      return res.status(400).json({ error: 'Invalid leave type.' });
     }
-    if (type === 'Emergency' && user.emergencyLeaveDays < duration) {
-      return res.status(400).json({ error: 'Insufficient emergency leave days.' });
-    }
 
-    const vacation = await prisma.vacation.create({
-      data: {
-        userId,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        reason,
-        type,
-      },
+    connection.query<LeaveResult[]>(leaveCheckQuery, [userId], (err, leaveResults) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Error checking leave balance.' });
+      }
+
+      if (leaveResults.length > 0) {
+        const leaveDays = type === 'Annual'
+          ? leaveResults[0].annualLeaveDays
+          : leaveResults[0].emergencyLeaveDays;
+
+        if (leaveDays && leaveDays < duration) {
+          return res.status(400).json({ error: `Insufficient ${type.toLowerCase()} leave days.` });
+        }
+
+        const insertQuery = 'INSERT INTO Vacations (userId, startDate, endDate, reason, type) VALUES (?, ?, ?, ?, ?)';
+        connection.query(insertQuery, [userId, startDate, endDate, reason, type], (err) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Error creating vacation request.' });
+          }
+
+          res.status(201).json({ message: 'Vacation request created successfully.' });
+        });
+      } else {
+        return res.status(404).json({ error: 'User not found or no leave data available.' });
+      }
     });
-    res.status(201).json(vacation);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error creating vacation request.' });
-  }
-});
-
-userVacationRouter.get('/user/:userId', async (req, res) => {
-  const userId = parseInt(req.params.userId, 10);
-
-  try {
-    const vacations = await prisma.vacation.findMany({
-      where: { userId },
-    });
-    res.status(200).json(vacations);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error fetching vacation requests.' });
-  }
+  });
 });
 
 export default userVacationRouter;

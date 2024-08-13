@@ -14,6 +14,8 @@ interface Admin {
     id: number;
     username: string;
     password: string;
+    role:string;
+    
 }
 const jwtSecret = generateSecretKey();
 const hashPassword = async (password: string): Promise<string> => {
@@ -23,46 +25,49 @@ const hashPassword = async (password: string): Promise<string> => {
 const verifyPassword = async (password: string, hashedPassword: string): Promise<boolean> => {
     return bcrypt.compare(password, hashedPassword);
 };
-
 superAdminRouter.post('/create', async (req, res) => {
-    const { name, username, email, phoneNumber, password } = req.body;
+  const { name, username, email, phoneNumber, password } = req.body;
 
-    if (!name || !username || !email || !phoneNumber || !password) {
-        return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
-    }
+  if (!name || !username || !email || !phoneNumber || !password) {
+      return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
+  }
 
-    try {
-        const hashedPassword = await hashPassword(password);
-        const query = `
-        INSERT INTO superadmin (name, username, email, phoneNumber, password)
-        VALUES (?, ?, ?, ?, ?)
-      `;
+  try {
+      const hashedPassword = await hashPassword(password);
+      const query = `
+      INSERT INTO admin (name, username, email, phoneNumber, password, role)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    const role = 'superadmin'; 
 
-        connection.query(query, [name, username, email, phoneNumber, hashedPassword], (err, results) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
-            }
 
-            const newId = (results as mysql.OkPacket).insertId;
+      connection.query(query, [name, username, email, phoneNumber, hashedPassword, role], (err, results) => {
+          if (err) {
+              console.error(err);
+              return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
+          }
 
-            res.status(201).json({
-                id: newId,
-                name,
-                username,
-                email,
-                phoneNumber,
-            });
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'حدث خطأ أثناء معالجة كلمة المرور.' });
-    }
+          const newId = (results as mysql.OkPacket).insertId;
+
+          res.status(201).json({
+              id: newId,
+              name,
+              username,
+              email,
+              phoneNumber,
+              role
+          });
+      });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'حدث خطأ أثناء معالجة كلمة المرور.' });
+  }
 });
+
 superAdminRouter.post('/login', async (req, res) => {
     const { username, password } = req.body;
   
-    const query = `SELECT * FROM superadmin WHERE username = ?`;
+    const query = `SELECT * FROM Admim WHERE username = ?`;
   
     connection.query(query, [username], async (err, results: mysql.RowDataPacket[]) => {
       if (err) {
@@ -90,7 +95,7 @@ superAdminRouter.post('/login', async (req, res) => {
           return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
         }
   
-        res.status(200).json({ token });
+        res.status(200).json({admin ,token });
       });
     });
   });
@@ -115,5 +120,15 @@ superAdminRouter.post('/logout', (req, res) => {
       res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
     });
   });
+superAdminRouter.get('/getall', async(req , res )=> {
+  const query = `SELECT * FROM superadmin`;
+  connection.query(query, (err, results: mysql.RowDataPacket[]) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error fetching superadmin requests.' });
+    }
+    res.status(200).json(results);
+  });
 
+});
 export default superAdminRouter;
