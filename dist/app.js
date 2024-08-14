@@ -97,28 +97,7 @@ app.get('/', (req, res) => {
         `);
     });
 });
-//    const superAdmin = {
-//     name: 'Super Admin',
-//     email: 'superadmin@example.com',
-//     password: 'superadminpassword' // كلمة المرور الأصلية
-//   };
-//   // تشفير كلمة المرور
-//   bcrypt.hash(superAdmin.password, 10, (err, hashedPassword) => {
-//     if (err) {
-//       console.error('خطأ في تشفير كلمة المرور:', err);
-//       return;
-//     }
-//     // إعداد استعلام SQL لإدخال سوبر أدمن
-//     const sql = 'INSERT INTO super_admins (name, email, password) VALUES (?, ?, ?)';
-//     // تنفيذ الاستعلام
-//     connection.query(sql, [superAdmin.name, superAdmin.email, hashedPassword], (err, result) => {
-//       if (err) {
-//         console.error('خطأ في إدخال سوبر أدمن:', err);
-//         return;
-//       }
-//       console.log('تم تسجيل سوبر أدمن بنجاح.');
-//     });
-// }); 
+
 app.use('/admin', adminauth_1.default);
 app.use('/plan', plans_1.default);
 app.use('/rule', rule_1.default);
