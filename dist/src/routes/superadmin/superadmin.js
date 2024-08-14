@@ -37,7 +37,7 @@ superAdminRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0,
     try {
         const hashedPassword = yield hashPassword(password);
         const query = `
-      INSERT INTO admin (name, username, email, phoneNumber, password, role)
+      INSERT INTO Admin (name, username, email, phoneNumber, password, role)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
         const role = 'superadmin';
@@ -95,7 +95,7 @@ superAdminRouter.post('/logout', (req, res) => {
     if (!token) {
         return res.status(400).json({ error: 'التوكن مطلوب.' });
     }
-    const deleteTokenQuery = `DELETE FROM secretkeysuperadmin WHERE token = ?`;
+    const deleteTokenQuery = `DELETE FROM SecretKeySuperadmin WHERE token = ?`;
     database_1.default.query(deleteTokenQuery, [token], (err) => {
         if (err) {
             console.error(err);

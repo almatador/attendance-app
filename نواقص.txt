@@ -1,0 +1,64 @@
+Ahmedwego.com:8443
+Ahmedwego@3030
+Abdelrahman
+http://localhost:3000/admin/create
+{
+  "name": "Ahmed Ali",
+  "username": "ahmed_admin",
+  "email": "ahmed@example.com",
+  "phoneNumber": "+201234567890",
+  "password": "StrongPassword123"
+}
+تم
+http://localhost:3000/admin/update/2
+{
+  "name": "Ahmed Ali Updated",
+  "username": "ahmed_admin_updated",
+  "email": "ahmed.updated@example.com",
+  "phoneNumber": "+201234567891",
+  "password": "NewStrongPassword123"
+}
+تم
+http://localhost:3000/admin/user/create
+{
+  "name": "Mona Hassan",
+  "email": "mona@example.com",
+  "password": "UserPassword123",
+  "adminId": 2,
+  "jobTitle": "Software Developer"
+}
+تم
+http://localhost:3000/admin/delete/:id
+تم
+http://localhost:3000/admin/user/update/8
+{
+  "name": "Mona Hassan Updated",
+  "email": "mona.updated@example.com",
+  "password": "NewUserPassword123",
+  "jobTitle": "Senior Software Developer"
+}
+تم
+http://localhost:3000/admin//login
+{
+  "username": "ahmed_admin",
+  "password": "StrongPassword123"
+}
+http://localhost:3000/admin//logout
+تم
+http://localhost:3000/admin/users/2
+تم
+http://localhost:3000/salaryadmin/create
+تم
+http://localhost:3000/salaryadmin/update/8
+تم
+http://localhost:3000/salaryadmin/all/2
+لا
+http://localhost:3000/zoun/znes
+تم
+http://localhost:3000/zoun/zones/2
+تم 
+
+
+اظهار التسجيل الحضور في الداش بورد
+نظام شفتات 
+نظام الاجازات والخصم من المرتب ان كان
