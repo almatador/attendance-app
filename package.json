@@ -7,7 +7,7 @@
     "node": "18.x"
   },
   "scripts": {
-    "dev": "nodemon app.ts",
+    "dev": "nodemon app.js",
     "start": "nodemon app.js",
     "prestart": "npm run build",
     "typecheck": "tsc --noEmit",
