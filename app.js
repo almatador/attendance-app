@@ -14,7 +14,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const path_1 = __importDefault(require("path"));
-const bcrypt_1 = __importDefault(require("bcrypt"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const adminauth_1 = __importDefault(require("./dist/src/routes/admin/adminauth"));
 const plans_1 = __importDefault(require("./dist/src/routes/plans/plans"));
@@ -29,12 +28,15 @@ const meetingadmin_1 = __importDefault(require("./dist/src/routes/admin/meetinga
 const meetinguser_1 = __importDefault(require("./dist/src/routes/user/meetinguser"));
 const adminzoun_1 = __importDefault(require("./dist/src/routes/admin/adminzoun"));
 const database_1 = __importDefault(require("./dist/src/routes/database"));
-const app = (0, express_1.default)();
+const userauth_1 = __importDefault(require("./dist/src/routes/user/userauth"));
+const adminshift_1 = __importDefault(require("./dist/src/routes/admin/adminshift"));
+
 const port = 3000;
 app.use(express_1.default.json());
 app.use(express_1.default.static(path_1.default.join(__dirname, 'public')));
 app.use(body_parser_1.default.urlencoded({ extended: false }));
 app.use(body_parser_1.default.json());
+app.use((0, cookie_parser_1.default)());
 app.get('/', (req, res) => {
     database_1.default.connect((err) => {
         if (err) {
@@ -97,10 +99,32 @@ app.get('/', (req, res) => {
         `);
     });
 });
- 
+//    const superAdmin = {
+//     name: 'Super Admin',
+//     email: 'superadmin@example.com',
+//     password: 'superadminpassword' // كلمة المرور الأصلية
+//   };
+//   // تشفير كلمة المرور
+//   bcrypt.hash(superAdmin.password, 10, (err, hashedPassword) => {
+//     if (err) {
+//       console.error('خطأ في تشفير كلمة المرور:', err);
+//       return;
+//     }
+//     // إعداد استعلام SQL لإدخال سوبر أدمن
+//     const sql = 'INSERT INTO super_admins (name, email, password) VALUES (?, ?, ?)';
+//     // تنفيذ الاستعلام
+//     connection.query(sql, [superAdmin.name, superAdmin.email, hashedPassword], (err, result) => {
+//       if (err) {
+//         console.error('خطأ في إدخال سوبر أدمن:', err);
+//         return;
+//       }
+//       console.log('تم تسجيل سوبر أدمن بنجاح.');
+//     });
+// }); 
 app.use('/admin', adminauth_1.default);
+app.use('/refreshtoken', refreshadmin_1.default);
+app.use('/shift', adminshift_1.default);
 app.use('/plan', plans_1.default);
-app.use('/rule', rule_1.default);
 app.use('/super', superadmin_1.default);
 app.use('/attendance', attendace_1.default);
 app.use('/vacations', vacations_1.default);

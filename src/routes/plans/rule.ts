@@ -1,137 +1,28 @@
-import express from 'express';
-import mysql from 'mysql2';
-import connection from '../database';
-import verifySuperAdmin from '../../Middleware/Middlewaresuperadmin'; // افترض أن هذا هو مسار الـ Middleware
+import nodemailer from 'nodemailer';
 
-const ruleRouter = express.Router();
-
-
-ruleRouter.use(verifySuperAdmin);
-
-// Create a new rule
-ruleRouter.post('/create', (req, res) => {
-  const { name, description } = req.body;
-
-  const query = `
-    INSERT INTO rule (name, description)
-    VALUES (?, ?)
-  `;
-
-  connection.query(query, [name, description], (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'An error occurred while creating the rule.' });
-    }
-    // Cast results to ResultSetHeader to access insertId
-    const resultSetHeader = results as mysql.ResultSetHeader;
-    res.status(201).json({ id: resultSetHeader.insertId, name, description });
-  });
+// إعداد النقل عبر البريد الإلكتروني
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'abedalrhmnhassan@gmail.com',
+    pass: 'matador 2024',
+  },
 });
 
-// Get all rules
-ruleRouter.get('/', (req, res) => {
-  const query = `SELECT * FROM rule`;
+const sendNotification = (email:string, subject:string, message:string) => {
+  const mailOptions = {
+    from: 'abedalrhmnhassan@gmail.com',
+    to: email,
+    subject: subject,
+    text: message,
+  };
 
-  connection.query(query, (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'An error occurred while fetching the rules.' });
-    }
-    res.status(200).json(results);
-  });
-});
-
-// Get a rule by ID
-ruleRouter.get('/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-
-  const query = `SELECT * FROM rule WHERE id = ?`;
-
-  connection.query(query, [id], (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'An error occurred while fetching the rule.' });
-    }
-
-    // Ensure results is an array
-    if (Array.isArray(results) && results.length > 0) {
-      res.status(200).json(results[0]);
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.error(error);
     } else {
-      res.status(404).json({ error: 'Rule not found.' });
+      console.log('Email sent: ' + info.response);
     }
   });
-});
-
-// Update a rule by ID
-ruleRouter.put('/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const { name, description } = req.body;
-
-  const query = `
-    UPDATE rule
-    SET name = ?, description = ?
-    WHERE id = ?
-  `;
-
-  connection.query(query, [name, description, id], (err) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'An error occurred while updating the rule.' });
-    }
-    res.status(200).json({ id, name, description });
-  });
-});
-
-// Delete a rule by ID
-ruleRouter.delete('/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-
-  const query = `DELETE FROM rule WHERE id = ?`;
-
-  connection.query(query, [id], (err) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'An error occurred while deleting the rule.' });
-    }
-    res.status(204).send();
-  });
-});
-
-// Add a rule to a plan
-ruleRouter.post('/:ruleId/plan/:planId', (req, res) => {
-  const ruleId = parseInt(req.params.ruleId, 10);
-  const planId = parseInt(req.params.planId, 10);
-
-  const query = `
-    INSERT INTO plan_rule (ruleId, planId)
-    VALUES (?, ?)
-  `;
-
-  connection.query(query, [ruleId, planId], (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'An error occurred while adding the rule to the plan.' });
-    }
-    // Cast results to ResultSetHeader to access insertId
-    const resultSetHeader = results as mysql.ResultSetHeader;
-    res.status(201).json({ id: resultSetHeader.insertId, ruleId, planId });
-  });
-});
-
-// Remove a rule from a plan
-ruleRouter.delete('/:ruleId/plan/:planId', (req, res) => {
-  const ruleId = parseInt(req.params.ruleId, 10);
-  const planId = parseInt(req.params.planId, 10);
-
-  const query = `DELETE FROM plan_rule WHERE ruleId = ? AND planId = ?`;
-
-  connection.query(query, [ruleId, planId], (err) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'An error occurred while removing the rule from the plan.' });
-    }
-    res.status(204).send();
-  });
-});
-
-export default ruleRouter;
+};
+export default sendNotification;

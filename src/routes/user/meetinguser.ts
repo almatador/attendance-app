@@ -1,5 +1,6 @@
 import express from 'express';
 import connection from '../database';
+import verifyuser from './../../Middleware/Middlewareuser';
 
 const userMeetingRouter = express.Router();
 
@@ -7,7 +8,7 @@ userMeetingRouter.use(express.json());
 
 // Get all meetings for a user
 
-userMeetingRouter.get('/user/:userId', (req, res) => {
+userMeetingRouter.get('/user/:userId', verifyuser,(req, res) => {
   const userId = parseInt(req.params.userId, 10);
 
   const query = 'SELECT * FROM Meetings WHERE userId = ?';

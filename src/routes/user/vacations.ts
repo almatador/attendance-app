@@ -1,6 +1,7 @@
 import express from 'express';
 import connection from '../database';
 import { RowDataPacket } from 'mysql2';
+import verifyuser from './../../Middleware/Middlewareuser';
 
 interface LeaveResult extends RowDataPacket {
   annualLeaveDays?: number;
@@ -9,7 +10,7 @@ interface LeaveResult extends RowDataPacket {
 
 const userVacationRouter = express.Router();
 
-userVacationRouter.post('/create', (req, res) => {
+userVacationRouter.post('/create',verifyuser, (req, res) => {
   const { userId, startDate, endDate, reason, type } = req.body;
 
   const start = new Date(startDate);

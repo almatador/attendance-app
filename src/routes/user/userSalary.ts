@@ -1,11 +1,12 @@
 import express from 'express';
 import connection from '../database';
+import verifyuser from './../../Middleware/Middlewareuser';
 
 const userSalaryRouter = express.Router();
 
 
 // Get all salary records for a user
-userSalaryRouter.get('/user/:userId', async (req, res) => {
+userSalaryRouter.get('/user/:userId',verifyuser, async (req, res) => {
   const userId = parseInt(req.params.userId, 10);
   const { token } = req.headers; // التوكن يتم إرساله كجزء من الهيدر
 

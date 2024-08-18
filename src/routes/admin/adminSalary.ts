@@ -1,7 +1,7 @@
 import express from 'express';
 import connection from '../database';
-
 const adminSalaryRouter = express.Router();
+
 interface Salary {
   id: number;
   userId: number;

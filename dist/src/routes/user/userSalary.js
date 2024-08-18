@@ -14,9 +14,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const database_1 = __importDefault(require("../database"));
+const Middlewareuser_1 = __importDefault(require("./../../Middleware/Middlewareuser"));
 const userSalaryRouter = express_1.default.Router();
 // Get all salary records for a user
-userSalaryRouter.get('/user/:userId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+userSalaryRouter.get('/user/:userId', Middlewareuser_1.default, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = parseInt(req.params.userId, 10);
     const { token } = req.headers; // التوكن يتم إرساله كجزء من الهيدر
     if (!token) {

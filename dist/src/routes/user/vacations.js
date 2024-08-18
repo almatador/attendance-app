@@ -5,8 +5,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const database_1 = __importDefault(require("../database"));
+const Middlewareuser_1 = __importDefault(require("./../../Middleware/Middlewareuser"));
 const userVacationRouter = express_1.default.Router();
-userVacationRouter.post('/create', (req, res) => {
+userVacationRouter.post('/create', Middlewareuser_1.default, (req, res) => {
     const { userId, startDate, endDate, reason, type } = req.body;
     const start = new Date(startDate);
     const end = new Date(endDate);

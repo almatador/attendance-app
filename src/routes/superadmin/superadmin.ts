@@ -12,7 +12,7 @@ const superAdminRouter = express.Router();
 const generateSecretKey = () => crypto.randomBytes(64).toString('hex');
 interface Admin {
     id: number;
-    username: string;
+    email: string;
     password: string;
     role:string;
     
@@ -33,43 +33,56 @@ superAdminRouter.post('/create', async (req, res) => {
   }
 
   try {
+      // تحقق مما إذا كان اسم المستخدم موجودًا بالفعل
+      const [userRows] = await connection.promise().query(
+          'SELECT * FROM admin WHERE username = ?',
+          [username]
+      );
+
+      if ((userRows as any[]).length > 0) {
+          return res.status(400).json({ error: 'اسم المستخدم موجود بالفعل' });
+      }
+
+      // تحقق مما إذا كان البريد الإلكتروني موجودًا بالفعل
+      const [emailRows] = await connection.promise().query(
+          'SELECT * FROM admin WHERE email = ?',
+          [email]
+      );
+
+      if ((emailRows as any[]).length > 0) {
+          return res.status(400).json({ error: 'البريد الإلكتروني موجود بالفعل' });
+      }
+
       const hashedPassword = await hashPassword(password);
       const query = `
       INSERT INTO admin (name, username, email, phoneNumber, password, role)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
-    const role = 'superadmin'; 
+    const role = 'superadmin';
 
+      const [result] = await connection.promise().query(query, [name, username, email, phoneNumber, hashedPassword, role]);
+      const newId = (result as mysql.OkPacket).insertId;
 
-      connection.query(query, [name, username, email, phoneNumber, hashedPassword, role], (err, results) => {
-          if (err) {
-              console.error(err);
-              return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
-          }
-
-          const newId = (results as mysql.OkPacket).insertId;
-
-          res.status(201).json({
-              id: newId,
-              name,
-              username,
-              email,
-              phoneNumber,
-              role
-          });
+      res.status(201).json({
+          id: newId,
+          name,
+          username,
+          email,
+          phoneNumber,
+          role
       });
   } catch (error) {
       console.error(error);
-      res.status(500).json({ error: 'حدث خطأ أثناء معالجة كلمة المرور.' });
+      res.status(500).json({ error: 'حدث خطأ أثناء معالجة البيانات.' });
   }
 });
 
 superAdminRouter.post('/login', async (req, res) => {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
   
-    const query = `SELECT * FROM Admim WHERE username = ?`;
+    const query = `SELECT * FROM Admim WHERE email = ?`;
   
-    connection.query(query, [username], async (err, results: mysql.RowDataPacket[]) => {
+    connection.query(query, [email], async (err, results: mysql.RowDataPacket[]) => {
       if (err) {
         console.error(err);
         return res.status(500).json({ error: 'خطأ في التحقق من بيانات المدير.' });

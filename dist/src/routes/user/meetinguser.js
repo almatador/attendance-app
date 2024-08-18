@@ -5,10 +5,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const database_1 = __importDefault(require("../database"));
+const Middlewareuser_1 = __importDefault(require("./../../Middleware/Middlewareuser"));
 const userMeetingRouter = express_1.default.Router();
 userMeetingRouter.use(express_1.default.json());
 // Get all meetings for a user
-userMeetingRouter.get('/user/:userId', (req, res) => {
+userMeetingRouter.get('/user/:userId', Middlewareuser_1.default, (req, res) => {
     const userId = parseInt(req.params.userId, 10);
     const query = 'SELECT * FROM Meetings WHERE userId = ?';
     database_1.default.query(query, [userId], (err, results) => {

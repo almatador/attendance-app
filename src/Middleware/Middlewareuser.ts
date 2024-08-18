@@ -4,7 +4,7 @@ import connection from '../routes/database';
 
 // Middleware للتحقق من السوبر أدمن
 const verifyuser = async (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization?.split(' ')[1]; // افترض أن التوكن يأتي في رأس Authorization
+    const token = req.cookies?.authToken;
 
     if (!token) {
         return res.status(401).json({ error: 'Access denied. No token provided.' });

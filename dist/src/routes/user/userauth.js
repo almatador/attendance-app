@@ -26,9 +26,9 @@ const verifyPassword = (password, hashedPassword) => __awaiter(void 0, void 0, v
     return bcrypt_1.default.compare(password, hashedPassword);
 });
 userRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, password } = req.body;
-    const query = `SELECT * FROM user WHERE username = ?`;
-    database_1.default.query(query, [username], (err, results) => __awaiter(void 0, void 0, void 0, function* () {
+    const { email, password } = req.body;
+    const query = `SELECT * FROM user WHERE email = ?`;
+    database_1.default.query(query, [email], (err, results) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
             console.error(err);
             return res.status(500).json({ error: 'خطأ في التحقق من بيانات المدير.' });
@@ -48,6 +48,11 @@ userRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, functi
                 console.error(err);
                 return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
             }
+            res.cookie('token', token, {
+                httpOnly: true, // يجعل الكوكي غير متاحة للوصول عبر جافاسكريبت من جانب العميل
+                secure: true, // تأكد من أن هذا موجود إذا كنت تستخدم HTTPS
+                maxAge: 3600000, // عمر الكوكي (1 ساعة في هذه الحالة)
+            });
             res.status(200).json({ token });
         });
     }));
@@ -63,6 +68,7 @@ userRouter.delete('/logout', (req, res) => __awaiter(void 0, void 0, void 0, fun
             console.error(err);
             return res.status(500).json({ error: 'خطأ في إلغاء التوكن.' });
         }
+        res.clearCookie('authToken');
         res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
     });
 }));

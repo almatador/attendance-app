@@ -17,7 +17,7 @@ const database_1 = __importDefault(require("../routes/database"));
 // Middleware للتحقق من السوبر أدمن
 const verifyuser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
-    const token = (_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(' ')[1]; // افترض أن التوكن يأتي في رأس Authorization
+    const token = (_a = req.cookies) === null || _a === void 0 ? void 0 : _a.authToken;
     if (!token) {
         return res.status(401).json({ error: 'Access denied. No token provided.' });
     }

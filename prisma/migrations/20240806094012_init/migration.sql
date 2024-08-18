@@ -154,6 +154,49 @@ CREATE TABLE `Attendancecheckout` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+CREATE TABLE `Shift` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `name` VARCHAR(191) NOT NULL,
+    `description` VARCHAR(191) NULL,
+    `startTime` TIME NOT NULL,
+    `endTime` TIME NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE TABLE `UserShift` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `userId` INTEGER NOT NULL,
+    `shiftId` INTEGER NOT NULL,
+    `shiftDate` DATE NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (`shiftId`) REFERENCES `Shift`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE TABLE `LateMark` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `userId` INTEGER NOT NULL,
+    `date` DATE NOT NULL,
+    `lateTime` TIME NOT NULL,
+    `reason` VARCHAR(191) NULL,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE TABLE `LateMark` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `userId` INTEGER NOT NULL,
+    `date` DATE NOT NULL,
+    `lateTime` TIME NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- CreateTable
 CREATE TABLE `Vacation` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
@@ -265,3 +308,17 @@ ALTER TABLE `Vacation`
 ADD COLUMN `description` TEXT NULL;
 
 
+ALTER TABLE `Attendance`
+ADD COLUMN `attendanceDate` DATE NOT NULL DEFAULT CURDATE(),
+ADD COLUMN `status` VARCHAR(50) DEFAULT 'present';
+ALTER TABLE `AttendancecheckIn`
+ADD COLUMN `location` VARCHAR(255) NULL,
+ADD COLUMN `notes` TEXT NULL;
+ALTER TABLE `Attendancecheckout`
+ADD COLUMN `notes` TEXT NULL;
+ALTER TABLE `Attendance`
+ADD COLUMN `status` ENUM('present', 'absent', 'late', 'excused') NOT NULL DEFAULT 'present';
+ALTER TABLE `AttendancecheckIn`
+ADD COLUMN `status` ENUM('present', 'late') NOT NULL DEFAULT 'present';
+ALTER TABLE `Attendancecheckout`
+ADD COLUMN `status` ENUM('present', 'late', 'excused') NOT NULL DEFAULT 'present';

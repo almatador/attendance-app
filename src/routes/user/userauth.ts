@@ -25,9 +25,9 @@ const verifyPassword = async (password: string, hashedPassword: string): Promise
 };
 
 userRouter.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  const query = `SELECT * FROM user WHERE username = ?`;
-  connection.query(query, [username], async (err, results: mysql.RowDataPacket[]) => {
+  const { email, password } = req.body;
+  const query = `SELECT * FROM user WHERE email = ?`;
+  connection.query(query, [email], async (err, results: mysql.RowDataPacket[]) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ error: 'خطأ في التحقق من بيانات المدير.' });
@@ -52,7 +52,11 @@ userRouter.post('/login', async (req, res) => {
         console.error(err);
         return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
       }
-
+      res.cookie('token', token, {
+        httpOnly: true, // يجعل الكوكي غير متاحة للوصول عبر جافاسكريبت من جانب العميل
+        secure: true, // تأكد من أن هذا موجود إذا كنت تستخدم HTTPS
+        maxAge: 3600000, // عمر الكوكي (1 ساعة في هذه الحالة)
+      });
       res.status(200).json({ token });
     });
   });
@@ -74,7 +78,8 @@ userRouter.delete('/logout', async (req, res) => {
           console.error(err);
           return res.status(500).json({ error: 'خطأ في إلغاء التوكن.' });
         }
-    
+        res.clearCookie('authToken');
+
         res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
       });
 });

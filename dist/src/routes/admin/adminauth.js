@@ -17,6 +17,7 @@ const database_1 = __importDefault(require("../database"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const crypto_1 = __importDefault(require("crypto"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken")); // Import JWT library
+const Middlewareadmin_1 = __importDefault(require("./../../Middleware/Middlewareadmin"));
 const adminRouter = express_1.default.Router();
 const saltRounds = 10;
 const jwtSecret = 'your_jwt_secret'; // Replace with your own secret key
@@ -64,7 +65,7 @@ adminRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0, func
         res.status(500).json({ error: 'حدث خطأ أثناء معالجة كلمة المرور.' });
     }
 }));
-adminRouter.put('/update/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+adminRouter.put('/update/:id', Middlewareadmin_1.default, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const { name, username, email, phoneNumber, password } = req.body;
     try {
@@ -95,7 +96,7 @@ adminRouter.put('/update/:id', (req, res) => __awaiter(void 0, void 0, void 0, f
         res.status(500).json({ error: 'حدث خطأ أثناء معالجة كلمة المرور.' });
     }
 }));
-adminRouter.delete('/delete/:id', (req, res) => {
+adminRouter.delete('/delete/:id', Middlewareadmin_1.default, (req, res) => {
     const { id } = req.params;
     const query = `
     DELETE FROM Admin
@@ -109,27 +110,50 @@ adminRouter.delete('/delete/:id', (req, res) => {
         res.status(204).send();
     });
 });
-adminRouter.post('/user/create', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, email, password, adminId, jobTitle } = req.body;
+adminRouter.post('/user/create', Middlewareadmin_1.default, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays } = req.body;
     // Ensure all required fields are provided
     if (!name || !email || !password || !adminId || !jobTitle) {
         return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
     }
-    const hashedPassword = yield hashPassword(password);
-    const query = `
-    INSERT INTO User (name, email, password, jobTitle, adminId)
-    VALUES (?, ?, ?, ?, ?)
-  `;
-    database_1.default.query(query, [name, email, hashedPassword, jobTitle, adminId], (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: 'Error creating User.' });
+    try {
+        // Hash the password
+        const hashedPassword = yield hashPassword(password);
+        // Check the admin's subscription plan
+        const [subscriptionRows] = yield database_1.default.promise().query(`SELECT p.users AS maxUsers 
+       FROM subscription s 
+       JOIN plan p ON s.planId = p.id 
+       WHERE s.adminId = ? AND s.endDate > NOW()`, [adminId]);
+        if (subscriptionRows.length === 0) {
+            return res.status(400).json({ error: 'Admin is not subscribed to any plan or subscription has expired.' });
         }
-        const newId = results.insertId;
-        res.status(201).json({ id: newId, name, email, password, adminId, jobTitle });
-    });
+        const { maxUsers } = subscriptionRows[0];
+        // Check the current number of users
+        const [userCountRows] = yield database_1.default.promise().query('SELECT COUNT(*) AS count FROM User WHERE adminId = ?', [adminId]);
+        const { count } = userCountRows[0];
+        if (count >= maxUsers) {
+            return res.status(400).json({ error: 'Cannot create more users. The maximum number of users for this plan has been reached.' });
+        }
+        // Insert the new user
+        const query = `
+      INSERT INTO User (name, email, password, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+        database_1.default.query(query, [name, email, hashedPassword, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Error creating User.' });
+            }
+            const newId = results.insertId;
+            res.status(201).json({ id: newId, name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays });
+        });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while creating the user.' });
+    }
 }));
-adminRouter.put('/user/update/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+adminRouter.put('/user/update/:id', Middlewareadmin_1.default, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const { name, email, password, jobTitle } = req.body;
     let query = `
@@ -154,7 +178,7 @@ adminRouter.put('/user/update/:id', (req, res) => __awaiter(void 0, void 0, void
         res.status(200).json({ id, name, email, jobTitle });
     });
 }));
-adminRouter.delete('/user/delete/:id', (req, res) => {
+adminRouter.delete('/user/delete/:id', Middlewareadmin_1.default, (req, res) => {
     const { id } = req.params;
     const query = `
     DELETE FROM User
@@ -169,9 +193,9 @@ adminRouter.delete('/user/delete/:id', (req, res) => {
     });
 });
 adminRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, password } = req.body;
-    const query = `SELECT * FROM Admin WHERE username = ?`;
-    database_1.default.query(query, [username], (err, results) => __awaiter(void 0, void 0, void 0, function* () {
+    const { email, password } = req.body;
+    const query = `SELECT * FROM Admin WHERE email = ?`;
+    database_1.default.query(query, [email], (err, results) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
             console.error(err);
             return res.status(500).json({ error: 'خطأ في التحقق من بيانات المدير.' });
@@ -184,18 +208,19 @@ adminRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, funct
         if (!match) {
             return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
         }
-        const token = jsonwebtoken_1.default.sign({ adminId: admin.id }, jwtSecret, { expiresIn: '1h' });
+        const token = jsonwebtoken_1.default.sign({ adminId: admin.id, role: admin.role }, jwtSecret, { expiresIn: '1h' });
         const insertTokenQuery = `INSERT INTO SecretKeyAdmin (adminId, token) VALUES (?, ?)`;
         database_1.default.query(insertTokenQuery, [admin.id, token], (err) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
             }
+            res.cookie('authToken', token, { httpOnly: true, secure: true });
             res.status(200).json({ token: token, admin: admin.role });
         });
     }));
 }));
-adminRouter.get('/users/:adminId', (req, res) => {
+adminRouter.get('/users/:adminId', Middlewareadmin_1.default, (req, res) => {
     const { adminId } = req.params;
     const query = `SELECT * FROM user WHERE adminId = ?`;
     database_1.default.query(query, [adminId], (err, results) => {
@@ -218,11 +243,12 @@ adminRouter.get('/users/:adminId', (req, res) => {
         res.status(200).json(users);
     });
 });
-// تسجيل الخروج
 adminRouter.post('/logout', (req, res) => {
-    const { token } = req.body;
+    var _a;
+    const token = (_a = req.cookies) === null || _a === void 0 ? void 0 : _a.authToken;
+    console.log(token);
     if (!token) {
-        return res.status(400).json({ error: 'التوكن مطلوب.' });
+        return res.status(400).json({ error: 'لم يتم العثور على التوكن.' });
     }
     const deleteTokenQuery = `DELETE FROM SecretKeyAdmin WHERE token = ?`;
     database_1.default.query(deleteTokenQuery, [token], (err) => {
@@ -230,6 +256,7 @@ adminRouter.post('/logout', (req, res) => {
             console.error(err);
             return res.status(500).json({ error: 'خطأ في إلغاء التوكن.' });
         }
+        res.clearCookie('authToken');
         res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
     });
 });

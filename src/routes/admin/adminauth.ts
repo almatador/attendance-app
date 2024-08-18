@@ -4,6 +4,7 @@ import connection from '../database';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken'; // Import JWT library
+import verifyAdmin from './../../Middleware/Middlewareadmin';
 
 const adminRouter = express.Router();
 const saltRounds = 10;
@@ -15,7 +16,7 @@ const generateSecretKey = () => {
 
 interface Admin {
   id: number;
-  username: string;
+  email: string;
   password: string;
   role:string;
   
@@ -81,7 +82,7 @@ adminRouter.post('/create', async (req, res) => {
 
 
 
-adminRouter.put('/update/:id', async (req, res) => {
+adminRouter.put('/update/:id',verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const { name, username, email, phoneNumber, password } = req.body;
 
@@ -114,7 +115,7 @@ adminRouter.put('/update/:id', async (req, res) => {
   }
 });
 
-adminRouter.delete('/delete/:id', (req, res) => {
+adminRouter.delete('/delete/:id',verifyAdmin, (req, res) => {
   const { id } = req.params;
 
   const query = `
@@ -131,32 +132,66 @@ adminRouter.delete('/delete/:id', (req, res) => {
   });
 });
 
-adminRouter.post('/user/create', async (req, res) => {
-  const { name, email, password, adminId, jobTitle } = req.body;
+adminRouter.post('/user/create', verifyAdmin, async (req, res) => {
+  const { name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays } = req.body;
 
   // Ensure all required fields are provided
   if (!name || !email || !password || !adminId || !jobTitle) {
     return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
   }
-  const hashedPassword = await hashPassword(password);
 
-  const query = `
-    INSERT INTO User (name, email, password, jobTitle, adminId)
-    VALUES (?, ?, ?, ?, ?)
-  `;
+  try {
+    // Hash the password
+    const hashedPassword = await hashPassword(password);
 
-  connection.query(query, [name, email, hashedPassword, jobTitle, adminId], (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Error creating User.' });
+    // Check the admin's subscription plan
+    const [subscriptionRows]: [any, any] = await connection.promise().query(
+      `SELECT p.users AS maxUsers 
+       FROM subscription s 
+       JOIN plan p ON s.planId = p.id 
+       WHERE s.adminId = ? AND s.endDate > NOW()`,
+      [adminId]
+    );
+
+    if (subscriptionRows.length === 0) {
+      return res.status(400).json({ error: 'Admin is not subscribed to any plan or subscription has expired.' });
     }
-    const newId = (results as mysql.OkPacket).insertId;
 
-    res.status(201).json({ id: newId, name, email, password, adminId, jobTitle });
-  });
+    const { maxUsers } = subscriptionRows[0];
+
+    // Check the current number of users
+    const [userCountRows]: [any, any] = await connection.promise().query(
+      'SELECT COUNT(*) AS count FROM User WHERE adminId = ?',
+      [adminId]
+    );
+    const { count } = userCountRows[0];
+
+    if (count >= maxUsers) {
+      return res.status(400).json({ error: 'Cannot create more users. The maximum number of users for this plan has been reached.' });
+    }
+
+    // Insert the new user
+    const query = `
+      INSERT INTO User (name, email, password, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    connection.query(query, [name, email, hashedPassword, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays], (err, results) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Error creating User.' });
+      }
+      const newId = (results as mysql.OkPacket).insertId;
+
+      res.status(201).json({ id: newId, name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays });
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred while creating the user.' });
+  }
 });
 
-adminRouter.put('/user/update/:id', async (req, res) => {
+adminRouter.put('/user/update/:id',verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const { name, email, password, jobTitle } = req.body;
 
@@ -184,7 +219,7 @@ adminRouter.put('/user/update/:id', async (req, res) => {
   });
 });
 
-adminRouter.delete('/user/delete/:id', (req, res) => {
+adminRouter.delete('/user/delete/:id',verifyAdmin, (req, res) => {
   const { id } = req.params;
 
   const query = `
@@ -202,11 +237,11 @@ adminRouter.delete('/user/delete/:id', (req, res) => {
 });
 
 adminRouter.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
-  const query = `SELECT * FROM Admin WHERE username = ?`;
+  const query = `SELECT * FROM Admin WHERE email = ?`;
 
-  connection.query(query, [username], async (err, results: mysql.RowDataPacket[]) => {
+  connection.query(query, [email], async (err, results: mysql.RowDataPacket[]) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ error: 'خطأ في التحقق من بيانات المدير.' });
@@ -223,7 +258,7 @@ adminRouter.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
     }
 
-    const token = jwt.sign({ adminId: admin.id }, jwtSecret, { expiresIn: '1h' });
+    const token = jwt.sign({ adminId: admin.id ,role: admin.role }, jwtSecret, { expiresIn: '1h' });
 
     const insertTokenQuery = `INSERT INTO SecretKeyAdmin (adminId, token) VALUES (?, ?)`;
     connection.query(insertTokenQuery, [admin.id, token], (err) => {
@@ -231,12 +266,13 @@ adminRouter.post('/login', async (req, res) => {
         console.error(err);
         return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
       }
+      res.cookie('authToken', token, { httpOnly: true, secure: true });
 
       res.status(200).json({ token:token , admin: admin.role});
     });
   });
 });
-adminRouter.get('/users/:adminId', (req, res) => {
+adminRouter.get('/users/:adminId',verifyAdmin, (req, res) => {
   const { adminId } = req.params;
   const query = `SELECT * FROM user WHERE adminId = ?`;
 
@@ -267,24 +303,23 @@ adminRouter.get('/users/:adminId', (req, res) => {
 
 
 
-
-// تسجيل الخروج
 adminRouter.post('/logout', (req, res) => {
-  const { token } = req.body;
-
+  const token = req.cookies?.authToken;
+  console.log(token)
   if (!token) {
-    return res.status(400).json({ error: 'التوكن مطلوب.' });
+      return res.status(400).json({ error: 'لم يتم العثور على التوكن.' });
   }
 
   const deleteTokenQuery = `DELETE FROM SecretKeyAdmin WHERE token = ?`;
 
   connection.query(deleteTokenQuery, [token], (err) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'خطأ في إلغاء التوكن.' });
-    }
-
-    res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
+      if (err) {
+          console.error(err);
+          return res.status(500).json({ error: 'خطأ في إلغاء التوكن.' });
+      }
+      res.clearCookie('authToken');
+      res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
   });
 });
+
 export default adminRouter;

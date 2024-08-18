@@ -5,7 +5,6 @@ import bcrypt from 'bcrypt';
 import bodyParser from 'body-parser';
 import adminRouter from './src/routes/admin/adminauth';
 import planRouter from './src/routes/plans/plans';
-import ruleRouter from './src/routes/plans/rule';
 import superAdminRouter from './src/routes/superadmin/superadmin';
 import attendanceRouter from './src/routes/user/attendace';
 import userVacationRouter from './src/routes/user/vacations';
@@ -17,6 +16,9 @@ import userMeetingRouter from './src/routes/user/meetinguser';
 import adminzoun from './src/routes/admin/adminzoun';
 import connection  from './src/routes/database';
 import userRouter from './src/routes/user/userauth';
+import shiftRouter from './src/routes/admin/adminshift';
+import cookieParser from 'cookie-parser';
+import refreshadminRouter from './src/Middleware/refreshadmin';
 
 
 const app = express();
@@ -25,6 +27,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.use(cookieParser());
+
 app.get('/', (req, res) => {
     connection.connect((err) => {
         if (err) {
@@ -113,8 +117,9 @@ app.get('/', (req, res) => {
 //     });
 // }); 
 app.use('/admin', adminRouter);
+app.use('/refreshtoken', refreshadminRouter)
+app.use('/shift', shiftRouter)
 app.use('/plan', planRouter);
-app.use('/rule', ruleRouter);
 app.use('/super', superAdminRouter);
 app.use('/attendance', attendanceRouter);
 app.use('/vacations', userVacationRouter);

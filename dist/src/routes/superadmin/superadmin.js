@@ -35,37 +35,42 @@ superAdminRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0,
         return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
     }
     try {
+        // تحقق مما إذا كان اسم المستخدم موجودًا بالفعل
+        const [userRows] = yield database_1.default.promise().query('SELECT * FROM admin WHERE username = ?', [username]);
+        if (userRows.length > 0) {
+            return res.status(400).json({ error: 'اسم المستخدم موجود بالفعل' });
+        }
+        // تحقق مما إذا كان البريد الإلكتروني موجودًا بالفعل
+        const [emailRows] = yield database_1.default.promise().query('SELECT * FROM admin WHERE email = ?', [email]);
+        if (emailRows.length > 0) {
+            return res.status(400).json({ error: 'البريد الإلكتروني موجود بالفعل' });
+        }
         const hashedPassword = yield hashPassword(password);
         const query = `
-      INSERT INTO Admin (name, username, email, phoneNumber, password, role)
+      INSERT INTO admin (name, username, email, phoneNumber, password, role)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
         const role = 'superadmin';
-        database_1.default.query(query, [name, username, email, phoneNumber, hashedPassword, role], (err, results) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
-            }
-            const newId = results.insertId;
-            res.status(201).json({
-                id: newId,
-                name,
-                username,
-                email,
-                phoneNumber,
-                role
-            });
+        const [result] = yield database_1.default.promise().query(query, [name, username, email, phoneNumber, hashedPassword, role]);
+        const newId = result.insertId;
+        res.status(201).json({
+            id: newId,
+            name,
+            username,
+            email,
+            phoneNumber,
+            role
         });
     }
     catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'حدث خطأ أثناء معالجة كلمة المرور.' });
+        res.status(500).json({ error: 'حدث خطأ أثناء معالجة البيانات.' });
     }
 }));
 superAdminRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, password } = req.body;
-    const query = `SELECT * FROM Admim WHERE username = ?`;
-    database_1.default.query(query, [username], (err, results) => __awaiter(void 0, void 0, void 0, function* () {
+    const { email, password } = req.body;
+    const query = `SELECT * FROM Admim WHERE email = ?`;
+    database_1.default.query(query, [email], (err, results) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
             console.error(err);
             return res.status(500).json({ error: 'خطأ في التحقق من بيانات المدير.' });
@@ -95,7 +100,7 @@ superAdminRouter.post('/logout', (req, res) => {
     if (!token) {
         return res.status(400).json({ error: 'التوكن مطلوب.' });
     }
-    const deleteTokenQuery = `DELETE FROM SecretKeySuperadmin WHERE token = ?`;
+    const deleteTokenQuery = `DELETE FROM secretkeysuperadmin WHERE token = ?`;
     database_1.default.query(deleteTokenQuery, [token], (err) => {
         if (err) {
             console.error(err);
