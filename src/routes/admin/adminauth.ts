@@ -258,7 +258,7 @@ adminRouter.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
     }
 
-    const token = jwt.sign({ adminId: admin.id ,role: admin.role }, jwtSecret, { expiresIn: '1h' });
+    const token = jwt.sign({ adminId: admin.id ,role: admin.role }, jwtSecret, { expiresIn: '7d' });
 
     const insertTokenQuery = `INSERT INTO SecretKeyAdmin (adminId, token) VALUES (?, ?)`;
     connection.query(insertTokenQuery, [admin.id, token], (err) => {
