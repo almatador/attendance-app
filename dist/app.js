@@ -30,6 +30,7 @@ const express_1 = __importDefault(require("express"));
 const path_1 = __importDefault(require("path"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
+const cors_1 = __importDefault(require("cors"));
 const adminauth_1 = __importDefault(require("./src/routes/admin/adminauth"));
 const plans_1 = __importDefault(require("./src/routes/plans/plans"));
 const superadmin_1 = __importDefault(require("./src/routes/superadmin/superadmin"));
@@ -48,6 +49,7 @@ const refreshadmin_1 = __importDefault(require("./src/Middleware/refreshadmin"))
 const Middlewareeror_1 = __importStar(require("./src/Middleware/Middlewareeror"));
 const app = (0, express_1.default)();
 const port = 3000;
+app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.static(path_1.default.join(__dirname, 'public')));
 app.use(body_parser_1.default.urlencoded({ extended: false }));

@@ -3,6 +3,7 @@ import path from 'path';
 import bcrypt from 'bcrypt';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
 
 import adminRouter from './src/routes/admin/adminauth';
 import planRouter from './src/routes/plans/plans';
@@ -23,7 +24,7 @@ import errorHandler, { errorLogs } from './src/Middleware/Middlewareeror';
 
 const app = express();
 const port = 3000;
-
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.urlencoded({ extended: false }));

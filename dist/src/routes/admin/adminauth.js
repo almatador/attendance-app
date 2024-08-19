@@ -209,7 +209,13 @@ adminRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, funct
             return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
         }
         const token = jsonwebtoken_1.default.sign({ adminId: admin.id, role: admin.role }, jwtSecret, { expiresIn: '7d' });
-        const insertTokenQuery = `INSERT INTO SecretKeyAdmin (adminId, token) VALUES (?, ?)`;
+        let insertTokenQuery = '';
+        if (admin.role === 'superadmin') {
+            insertTokenQuery = `INSERT INTO secretkeysuperadmin (superAdminId, token) VALUES (?, ?)`;
+        }
+        else {
+            insertTokenQuery = `INSERT INTO secretkeyadmin (adminId, token) VALUES (?, ?)`;
+        }
         database_1.default.query(insertTokenQuery, [admin.id, token], (err) => {
             if (err) {
                 console.error(err);

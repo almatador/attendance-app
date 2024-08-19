@@ -12,24 +12,25 @@ interface Salary {
   emergencyDeductions: number;
   netSalary: number;
   exchangeDate: Date;
+  is_captured:string
 }
 
 adminSalaryRouter.post('/create', (req, res) => {
-  const { userId, period, basicSalary, increase, projectPercentage, emergencyDeductions, exchangeDate } = req.body;
+  const { userId, period, basicSalary, increase, projectPercentage, emergencyDeductions, exchangeDate ,is_captured = 'papending'} = req.body;
 
   const netSalary = basicSalary + increase + projectPercentage - emergencyDeductions;
 
   const query = `
-    INSERT INTO salary (userId, period, basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, exchangeDate)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO salary (userId, period, basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, exchangeDate, is_captured)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)
   `;
 
-  connection.query(query, [userId, new Date(period), basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, new Date(exchangeDate)], (err, ) => {
+  connection.query(query, [userId, new Date(period), basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, new Date(exchangeDate),is_captured], (err, ) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ error: 'Error creating salary record.' });
     }
-    res.status(201).json({ id: userId, userId, period, basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, exchangeDate });
+    res.status(201).json({ id: userId, userId, period, basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, exchangeDate, is_captured });
   });
 });
 
@@ -63,6 +64,38 @@ adminSalaryRouter.put('/update/:id', (req, res) => {
       res.status(200).json({ id, basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, exchangeDate });
     });
   });
+});
+adminSalaryRouter.post('/is_captured/:userId', async (req, res) => {
+  const userId = parseInt(req.params.userId, 10);
+  const { is_captured } = req.body;
+
+  try {
+    // استرجاع تفاصيل المستخدم
+    const [rows] :any = await connection.promise().query('SELECT * FROM salary WHERE userId = ?', [userId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // إذا كانت الحالة هي "paid"
+    if (is_captured === 'paid') {
+      // انتظر لمدة يومين (48 ساعة)
+      setTimeout(async () => {
+        // تحديث حالة القبض إلى الشهر الجديد
+        const updateQuery = 'UPDATE salary SET month = month + 1 WHERE userId = ?';
+        await connection.promise().query(updateQuery, [userId]);
+
+        return res.json({ message: 'User status updated and moved to the next month' });
+      }, 48 * 60 * 60 * 1000); // 48 ساعة بالمللي ثانية
+
+    } else {
+      return res.json({ message: 'No update needed. The status is still pending.' });
+    }
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server error' });
+  }
 });
 
 // Get all salary records

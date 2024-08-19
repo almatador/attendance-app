@@ -260,8 +260,13 @@ adminRouter.post('/login', async (req, res) => {
 
     const token = jwt.sign({ adminId: admin.id ,role: admin.role }, jwtSecret, { expiresIn: '7d' });
 
-    const insertTokenQuery = `INSERT INTO SecretKeyAdmin (adminId, token) VALUES (?, ?)`;
-    connection.query(insertTokenQuery, [admin.id, token], (err) => {
+    let insertTokenQuery = '';
+    if (admin.role === 'superadmin') {
+      insertTokenQuery = `INSERT INTO secretkeysuperadmin (superAdminId, token) VALUES (?, ?)`;
+    } else {
+      insertTokenQuery = `INSERT INTO secretkeyadmin (adminId, token) VALUES (?, ?)`;
+    }
+      connection.query(insertTokenQuery, [admin.id, token], (err) => {
       if (err) {
         console.error(err);
         return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });

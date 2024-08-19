@@ -13,8 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const database_1 = __importDefault(require("../routes/database"));
-const console_1 = require("console");
+const database_1 = __importDefault(require("../routes/database")); // تأكد من أن هذا يستخدم mysql2/promise
 const verifyAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     const token = (_a = req.cookies) === null || _a === void 0 ? void 0 : _a.authToken;
@@ -27,27 +26,30 @@ const verifyAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
         console.log(decoded);
         const role = decoded.role;
         const id = decoded.adminId;
-        let tableName = '';
+        let query = '';
         if (role === 'superadmin') {
-            tableName = 'SecretKeySuperadmin';
+            query = 'SELECT * FROM secretkeysuperadmin WHERE superAdminId = ?';
         }
         else if (role === 'admin') {
-            tableName = 'SecretKeyadmin';
+            query = 'SELECT * FROM secretkeyadmin WHERE adminId = ?';
         }
         else {
             return res.status(403).json({ error: 'Access denied. Invalid role.' });
         }
-        const [rows] = yield database_1.default.execute(`SELECT * FROM ${tableName} WHERE adminId = ?`, [id]);
-        if (rows.length === 0) {
-            return res.status(403).json({ error: 'Access denied. Not authorized.' });
-        }
-        req.user = rows[0];
-        next();
+        // استخدام طريقة promise-based query
+        database_1.default.query(query, [id], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(403).json({ error: 'Access denied. Not authorized.' });
+            }
+            req.user = results;
+            console.log("token done");
+            next();
+        });
     }
     catch (err) {
         console.error(err);
         res.status(400).json({ error: 'Invalid token.' });
-        console.log(console_1.error);
     }
 });
 exports.default = verifyAdmin;
