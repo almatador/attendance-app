@@ -58,6 +58,7 @@ adminRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0, func
                 phoneNumber,
                 role
             });
+            console.log(err);
         });
     }
     catch (error) {
@@ -222,7 +223,7 @@ adminRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, funct
                 return res.status(500).json({ error: 'خطأ في تخزين التوكن.' });
             }
             res.cookie('authToken', token, { httpOnly: true, secure: true });
-            res.status(200).json({ token: token, admin: admin.role });
+            res.status(200).json({ token: token, admin: admin });
         });
     }));
 }));

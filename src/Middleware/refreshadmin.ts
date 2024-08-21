@@ -1,45 +1,55 @@
-import express from 'express';
+import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import connection from '../routes/database';
-import bodyParser from 'body-parser';
+import connection from '../routes/database'; // تأكد من المسار الصحيح لملف قاعدة البيانات
 
-const refreshadminRouter = express.Router();
-const jwtSecret = 'your_jwt_secret';  // تأكد من أن السر موجود في مكان آمن مثل ملفات البيئة
-const refreshSecret = 'your_refresh_secret'; // سر لتوقيع توكن التحديث
+// توليد Refresh Token جديد
+const generateRefreshToken = (user: any) => {
+    return jwt.sign(user, 'your_refresh_token_secret', { expiresIn: '7d' }); // صلاحية 7 أيام كمثال
+};
 
-refreshadminRouter.use(bodyParser.json()); // لتحليل محتوى JSON
-
-refreshadminRouter.post('/refresh-token', async (req, res) => {
-    const refreshToken = req.cookies?.authToken; // تأكد من استخدام refreshToken وليس authToken
-
-    if (!refreshToken) {
+// مسار لتجديد الـRefresh Token
+const renewRefreshToken = async (req: Request, res: Response) => {
+    const oldRefreshToken = req.cookies?.refreshToken;
+    if (!oldRefreshToken) {
         return res.status(401).json({ error: 'Access denied. No refresh token provided.' });
     }
 
     try {
-        // تحقق من صحة توكن التحديث
-        const decoded: any = jwt.verify(refreshToken, refreshSecret);
+        const decoded: any = jwt.verify(oldRefreshToken, 'your_refresh_token_secret');
+        const role = decoded.role;
+        const id = decoded.adminId;
+        let query = '';
 
-        const { adminId, role } = decoded;
-
-        // تحقق من وجود توكن التحديث في قاعدة البيانات
-        const [rows]: any = await connection.execute(
-            `SELECT * FROM SecretKeyAdmin WHERE adminId = ? AND refreshToken = ?`,
-            [adminId, refreshToken]
-        );
-
-        if (rows.length === 0) {
-            return res.status(403).json({ error: 'Invalid refresh token.' });
+        if (role === 'superadmin') {
+            query = 'SELECT * FROM secretkeysuperadmin WHERE superAdminId = ?';
+        } else if (role === 'admin') {
+            query = 'SELECT * FROM secretkeyadmin WHERE adminId = ?';
+        } else {
+            return res.status(403).json({ error: 'Access denied. Invalid role.' });
         }
 
-        // إنشاء توكن جديد
-        const newToken = jwt.sign({ adminId, role }, jwtSecret, { expiresIn: '1h' });
+        const [results]:any = await connection.query(query, [id]);
 
-        res.cookie('authToken', newToken, { httpOnly: true, secure: true });
-        return res.status(200).json({ token: newToken });
+        if (!results.length) {
+            return res.status(403).json({ error: 'Access denied. Invalid refresh token.' });
+        }
+
+        // توليد Refresh Token جديد وتخزينه
+        const newRefreshToken = generateRefreshToken({ role, adminId: id });
+        // تحديث Refresh Token في قاعدة البيانات
+        const updateQuery = role === 'superadmin'
+            ? 'UPDATE secretkeysuperadmin SET refreshToken = ? WHERE superAdminId = ?'
+            : 'UPDATE secretkeyadmin SET refreshToken = ? WHERE adminId = ?';
+
+        await connection.query(updateQuery, [newRefreshToken, id]);
+
+        // إرسال Refresh Token الجديد إلى العميل
+        res.cookie('refreshToken', newRefreshToken, { httpOnly: true });
+        res.json({ refreshToken: newRefreshToken });
     } catch (err) {
-        return res.status(403).json({ error: 'Invalid refresh token.', message: (err as Error).message });
+        console.error(err);
+        res.status(403).json({ error: 'Invalid refresh token.' });
     }
-});
+};
 
-export default refreshadminRouter;
+export default renewRefreshToken;

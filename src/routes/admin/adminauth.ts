@@ -73,6 +73,7 @@ adminRouter.post('/create', async (req, res) => {
         phoneNumber,
         role
       });
+      console.log(err)
     });
   } catch (error) {
     console.error(error);
@@ -273,7 +274,7 @@ adminRouter.post('/login', async (req, res) => {
       }
       res.cookie('authToken', token, { httpOnly: true, secure: true });
 
-      res.status(200).json({ token:token , admin: admin.role});
+      res.status(200).json({ token:token , admin: admin});
     });
   });
 });

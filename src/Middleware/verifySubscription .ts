@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import connection from './../routes/database';
-import sendNotification from './../routes/plans/rule';
 
 const verifySubscription = async (req: Request, res: Response, next: NextFunction) => {
   const adminId = req.body.adminId || req.query.adminId || req.params.adminId;
