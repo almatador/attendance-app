@@ -15,25 +15,6 @@ interface Salary {
   is_captured:string
 }
 
-adminSalaryRouter.post('/create', (req, res) => {
-  const { userId, period, basicSalary, increase, projectPercentage, emergencyDeductions, exchangeDate ,is_captured = 'papending'} = req.body;
-
-  const netSalary = basicSalary + increase + projectPercentage - emergencyDeductions;
-
-  const query = `
-    INSERT INTO salary (userId, period, basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, exchangeDate, is_captured)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)
-  `;
-
-  connection.query(query, [userId, new Date(period), basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, new Date(exchangeDate),is_captured], (err, ) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Error creating salary record.' });
-    }
-    res.status(201).json({ id: userId, userId, period, basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, exchangeDate, is_captured });
-  });
-});
-
 // Update an existing salary record
 adminSalaryRouter.put('/update/:id', (req, res) => {
   const id = parseInt(req.params.id, 10);

@@ -134,18 +134,18 @@ adminRouter.delete('/delete/:id',verifyAdmin, (req, res) => {
 });
 
 adminRouter.post('/user/create', verifyAdmin, async (req, res) => {
-  const { name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays } = req.body;
+  const { name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays } = req.body.user;
+  const { period, basicSalary, increase, projectPercentage, emergencyDeductions, exchangeDate, is_captured = 'pending' } = req.body.salary;
 
-  // Ensure all required fields are provided
-  if (!name || !email || !password || !adminId || !jobTitle) {
-    return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
+  if (!name || !email || !password || !adminId || !jobTitle || !period || !basicSalary) {
+    return res.status(400).json({ error: 'All fields are required.' });
   }
 
   try {
     // Hash the password
     const hashedPassword = await hashPassword(password);
 
-    // Check the admin's subscription plan
+    // Check admin's subscription plan
     const [subscriptionRows]: [any, any] = await connection.promise().query(
       `SELECT p.users AS maxUsers 
        FROM subscription s 
@@ -171,24 +171,33 @@ adminRouter.post('/user/create', verifyAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Cannot create more users. The maximum number of users for this plan has been reached.' });
     }
 
-    // Insert the new user
-    const query = `
-      INSERT INTO User (name, email, password, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `;
+    // Insert the new user and create salary record in a transaction
 
-    connection.query(query, [name, email, hashedPassword, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays], (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Error creating User.' });
-      }
-      const newId = (results as mysql.OkPacket).insertId;
+    try {
+      const userQuery = `
+        INSERT INTO User (name, email, password, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
 
-      res.status(201).json({ id: newId, name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays });
-    });
+      const [userResult]: any = await connection.execute(userQuery, [name, email, hashedPassword, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays]);
+      const newUserId = userResult.insertId;
+
+      const netSalary = basicSalary + increase + projectPercentage - emergencyDeductions;
+
+      const salaryQuery = `
+        INSERT INTO salary (userId, period, basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, exchangeDate, is_captured)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      await connection.execute(salaryQuery, [newUserId, new Date(period), basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, new Date(exchangeDate), is_captured]);
+
+      await connection.commit();
+      res.status(201).json({ id: newUserId, name, email, jobTitle, period, basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, exchangeDate, is_captured });
+    } catch (error) {
+      throw error;}
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'An error occurred while creating the user.' });
+    res.status(500).json({ error: 'An error occurred while creating the user and salary record.' });
   }
 });
 

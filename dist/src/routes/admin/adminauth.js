@@ -112,15 +112,15 @@ adminRouter.delete('/delete/:id', Middlewareadmin_1.default, (req, res) => {
     });
 });
 adminRouter.post('/user/create', Middlewareadmin_1.default, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays } = req.body;
-    // Ensure all required fields are provided
-    if (!name || !email || !password || !adminId || !jobTitle) {
-        return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
+    const { name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays } = req.body.user;
+    const { period, basicSalary, increase, projectPercentage, emergencyDeductions, exchangeDate, is_captured = 'pending' } = req.body.salary;
+    if (!name || !email || !password || !adminId || !jobTitle || !period || !basicSalary) {
+        return res.status(400).json({ error: 'All fields are required.' });
     }
     try {
         // Hash the password
         const hashedPassword = yield hashPassword(password);
-        // Check the admin's subscription plan
+        // Check admin's subscription plan
         const [subscriptionRows] = yield database_1.default.promise().query(`SELECT p.users AS maxUsers 
        FROM subscription s 
        JOIN plan p ON s.planId = p.id 
@@ -135,23 +135,30 @@ adminRouter.post('/user/create', Middlewareadmin_1.default, (req, res) => __awai
         if (count >= maxUsers) {
             return res.status(400).json({ error: 'Cannot create more users. The maximum number of users for this plan has been reached.' });
         }
-        // Insert the new user
-        const query = `
-      INSERT INTO User (name, email, password, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `;
-        database_1.default.query(query, [name, email, hashedPassword, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays], (err, results) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ error: 'Error creating User.' });
-            }
-            const newId = results.insertId;
-            res.status(201).json({ id: newId, name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays });
-        });
+        // Insert the new user and create salary record in a transaction
+        try {
+            const userQuery = `
+        INSERT INTO User (name, email, password, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+            const [userResult] = yield database_1.default.execute(userQuery, [name, email, hashedPassword, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays]);
+            const newUserId = userResult.insertId;
+            const netSalary = basicSalary + increase + projectPercentage - emergencyDeductions;
+            const salaryQuery = `
+        INSERT INTO salary (userId, period, basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, exchangeDate, is_captured)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+            yield database_1.default.execute(salaryQuery, [newUserId, new Date(period), basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, new Date(exchangeDate), is_captured]);
+            yield database_1.default.commit();
+            res.status(201).json({ id: newUserId, name, email, jobTitle, period, basicSalary, increase, projectPercentage, emergencyDeductions, netSalary, exchangeDate, is_captured });
+        }
+        catch (error) {
+            throw error;
+        }
     }
     catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'An error occurred while creating the user.' });
+        res.status(500).json({ error: 'An error occurred while creating the user and salary record.' });
     }
 }));
 adminRouter.put('/user/update/:id', Middlewareadmin_1.default, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
