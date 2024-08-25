@@ -249,7 +249,7 @@ adminRouter.delete('/user/delete/:id',verifyAdmin, (req, res) => {
 adminRouter.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
-  const query = `SELECT * FROM Admin WHERE email = ?`;
+  const query = `SELECT * FROM admin WHERE email = ?`;
 
   connection.query(query, [email], async (err, results: mysql.RowDataPacket[]) => {
     if (err) {

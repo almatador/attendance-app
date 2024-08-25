@@ -202,7 +202,7 @@ adminRouter.delete('/user/delete/:id', Middlewareadmin_1.default, (req, res) => 
 });
 adminRouter.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { email, password } = req.body;
-    const query = `SELECT * FROM Admin WHERE email = ?`;
+    const query = `SELECT * FROM admin WHERE email = ?`;
     database_1.default.query(query, [email], (err, results) => __awaiter(void 0, void 0, void 0, function* () {
         if (err) {
             console.error(err);
