@@ -18,6 +18,7 @@ const bcrypt_1 = __importDefault(require("bcrypt"));
 const crypto_1 = __importDefault(require("crypto"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken")); // Import JWT library
 const Middlewareadmin_1 = __importDefault(require("./../../Middleware/Middlewareadmin"));
+const uploud_1 = __importDefault(require("./../../Middleware/uploud"));
 const adminRouter = express_1.default.Router();
 const saltRounds = 10;
 const jwtSecret = 'your_jwt_secret'; // Replace with your own secret key
@@ -33,18 +34,20 @@ const hashPassword = (password) => __awaiter(void 0, void 0, void 0, function* (
 const verifyPassword = (password, hashedPassword) => __awaiter(void 0, void 0, void 0, function* () {
     return bcrypt_1.default.compare(password, hashedPassword);
 });
-adminRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+adminRouter.post('/create', uploud_1.default.single('profileImage'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     const { name, username, email, phoneNumber, password, role = 'admin' } = req.body;
+    const profileImage = (_a = req.file) === null || _a === void 0 ? void 0 : _a.filename; // اسم الملف الذي تم رفعه
     if (!name || !username || !email || !phoneNumber || !password) {
-        return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
+        return res.status(400).json({ error: 'جميع الحقول مطلوب' });
     }
     try {
-        const hashedPassword = yield hashPassword(password);
+        const hashedPassword = yield bcrypt_1.default.hash(password, 10);
         const query = `
-      INSERT INTO admin (name, username, email, phoneNumber, password, role)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
-        database_1.default.query(query, [name, username, email, phoneNumber, hashedPassword, role], (err, results) => {
+            INSERT INTO admin (name, username, email, phoneNumber, password, role, profileImage)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
+        database_1.default.query(query, [name, username, email, phoneNumber, hashedPassword, role, profileImage], (err, results) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
@@ -56,9 +59,9 @@ adminRouter.post('/create', (req, res) => __awaiter(void 0, void 0, void 0, func
                 username,
                 email,
                 phoneNumber,
-                role
+                role,
+                profileImage
             });
-            console.log(err);
         });
     }
     catch (error) {
@@ -71,7 +74,7 @@ adminRouter.put('/update/:id', Middlewareadmin_1.default, (req, res) => __awaite
     const { name, username, email, phoneNumber, password } = req.body;
     try {
         let query = `
-      UPDATE Admin
+      UPDATE admin
       SET name = ?, username = ?, email = ?, phoneNumber = ?
     `;
         const params = [name, username, email, phoneNumber];
@@ -111,8 +114,8 @@ adminRouter.delete('/delete/:id', Middlewareadmin_1.default, (req, res) => {
         res.status(204).send();
     });
 });
-adminRouter.post('/user/create', Middlewareadmin_1.default, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays } = req.body.user;
+adminRouter.post('/user/create', Middlewareadmin_1.default, uploud_1.default.single('profileImage'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays, profileImage } = req.body.user;
     const { period, basicSalary, increase, projectPercentage, emergencyDeductions, exchangeDate, is_captured = 'pending' } = req.body.salary;
     if (!name || !email || !password || !adminId || !jobTitle || !period || !basicSalary) {
         return res.status(400).json({ error: 'All fields are required.' });
@@ -138,10 +141,10 @@ adminRouter.post('/user/create', Middlewareadmin_1.default, (req, res) => __awai
         // Insert the new user and create salary record in a transaction
         try {
             const userQuery = `
-        INSERT INTO User (name, email, password, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO User (name, email, password, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays,profileImage)
+        VALUES (?, ?, ?, ?, ?, ?, ?,?)
       `;
-            const [userResult] = yield database_1.default.execute(userQuery, [name, email, hashedPassword, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays]);
+            const [userResult] = yield database_1.default.execute(userQuery, [name, email, hashedPassword, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays, profileImage]);
             const newUserId = userResult.insertId;
             const netSalary = basicSalary + increase + projectPercentage - emergencyDeductions;
             const salaryQuery = `

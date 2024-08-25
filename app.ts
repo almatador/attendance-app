@@ -21,6 +21,7 @@ import userRouter from './src/routes/user/userauth';
 import shiftRouter from './src/routes/admin/adminshift';
 import refreshadminRouter from './src/Middleware/refreshadmin';
 import errorHandler, { errorLogs } from './src/Middleware/Middlewareeror';
+import upload from './src/Middleware/uploud';
 
 const app = express();
 const port = 3000;

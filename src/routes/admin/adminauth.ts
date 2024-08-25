@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken'; // Import JWT library
 import verifyAdmin from './../../Middleware/Middlewareadmin';
+import upload from './../../Middleware/uploud';
 
 const adminRouter = express.Router();
 const saltRounds = 10;
@@ -43,43 +44,46 @@ const verifyPassword = async (password: string, hashedPassword: string): Promise
   return bcrypt.compare(password, hashedPassword);
 };
 
-adminRouter.post('/create', async (req, res) => {
-  const { name, username, email, phoneNumber, password, role ='admin' } = req.body;
 
-  if (!name || !username || !email || !phoneNumber || !password) {
-    return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
-  }
+adminRouter.post('/create', upload.single('profileImage'), async (req, res) => {
+    const { name, username, email, phoneNumber, password, role = 'admin' } = req.body;
+    const profileImage = req.file?.filename; // اسم الملف الذي تم رفعه
 
-  try {
-    const hashedPassword = await hashPassword(password);
-    const query = `
-      INSERT INTO admin (name, username, email, phoneNumber, password, role)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
+    if (!name || !username || !email || !phoneNumber || !password ) {
+        return res.status(400).json({ error: 'جميع الحقول مطلوب' });
+    }
 
-    connection.query(query, [name, username, email, phoneNumber, hashedPassword ,role], (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
-      }
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const query = `
+            INSERT INTO admin (name, username, email, phoneNumber, password, role, profileImage)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
 
-      const newId = (results as mysql.OkPacket).insertId;
+        connection.query(query, [name, username, email, phoneNumber, hashedPassword, role, profileImage], (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'حدث خطأ أثناء إنشاء المدير.' });
+            }
 
-      res.status(201).json({
-        id: newId,
-        name,
-        username,
-        email,
-        phoneNumber,
-        role
-      });
-      console.log(err)
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'حدث خطأ أثناء معالجة كلمة المرور.' });
-  }
+            const newId = (results as mysql.OkPacket).insertId;
+
+            res.status(201).json({
+                id: newId,
+                name,
+                username,
+                email,
+                phoneNumber,
+                role,
+                profileImage 
+            });
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'حدث خطأ أثناء معالجة كلمة المرور.' });
+    }
 });
+
 
 
 
@@ -89,7 +93,7 @@ adminRouter.put('/update/:id',verifyAdmin, async (req, res) => {
 
   try {
     let query = `
-      UPDATE Admin
+      UPDATE admin
       SET name = ?, username = ?, email = ?, phoneNumber = ?
     `;
     const params = [name, username, email, phoneNumber];
@@ -133,8 +137,8 @@ adminRouter.delete('/delete/:id',verifyAdmin, (req, res) => {
   });
 });
 
-adminRouter.post('/user/create', verifyAdmin, async (req, res) => {
-  const { name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays } = req.body.user;
+adminRouter.post('/user/create', verifyAdmin,upload.single('profileImage'), async (req, res) => {
+  const { name, email, password, adminId, jobTitle, emergencyLeaveDays, annualLeaveDays ,profileImage } = req.body.user;
   const { period, basicSalary, increase, projectPercentage, emergencyDeductions, exchangeDate, is_captured = 'pending' } = req.body.salary;
 
   if (!name || !email || !password || !adminId || !jobTitle || !period || !basicSalary) {
@@ -175,11 +179,11 @@ adminRouter.post('/user/create', verifyAdmin, async (req, res) => {
 
     try {
       const userQuery = `
-        INSERT INTO User (name, email, password, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO User (name, email, password, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays,profileImage)
+        VALUES (?, ?, ?, ?, ?, ?, ?,?)
       `;
 
-      const [userResult]: any = await connection.execute(userQuery, [name, email, hashedPassword, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays]);
+      const [userResult]: any = await connection.execute(userQuery, [name, email, hashedPassword, jobTitle, adminId, emergencyLeaveDays, annualLeaveDays,profileImage]);
       const newUserId = userResult.insertId;
 
       const netSalary = basicSalary + increase + projectPercentage - emergencyDeductions;
@@ -336,5 +340,6 @@ adminRouter.post('/logout', (req, res) => {
       res.status(200).json({ message: 'تم تسجيل الخروج بنجاح.' });
   });
 });
+
 
 export default adminRouter;
